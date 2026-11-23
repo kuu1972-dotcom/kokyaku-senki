@@ -270,6 +270,7 @@ $('result').addEventListener('click',e=>{const a=e.target.closest('[data-a]');if
 /* ================= 戦闘 ================= */
 const cv=$('cv'),ctx=cv.getContext('2d');
 let W=800,H=340,S0=1,GY=290,LIMIT=120;
+const TEMPO=.8; /* 戦闘の速さ(1=元の速さ、小さいほどゆっくり) */
 function fit(){const r=cv.getBoundingClientRect();if(!r.width)return;const d=Math.min(2,window.devicePixelRatio||1);W=r.width;H=r.height;cv.width=Math.round(W*d);cv.height=Math.round(H*d);ctx.setTransform(d,0,0,d,0,0);S0=H/320;GY=H*.84}
 const cvRO=new ResizeObserver(fit);cvRO.observe(cv);
 let G=null,CAM={x:500,z:.8},logDirty=true;
@@ -513,9 +514,9 @@ function buildSq(){const q=G.P.squads;$('sq').innerHTML=q.length?q.map((x,i)=>`<
 let hudT=0;
 function hud(dt){if(mode!=='battle'||!G||G.demo)return;hudT-=dt;if(hudT>0)return;hudT=.08;const P=G.P;
  $('pU').innerHTML=card(P,crewTxt(P.src));$('eU').innerHTML=card(G.E,'北方軍');
- const c=cap(P);$('aimNum').textContent=P.aiming?Math.round(P.aim)+'%':'—';$('cancel').disabled=!P.aiming;$('aimBar').style.width=(P.aiming?P.aim:0)+'%';$('capMark').style.left=Math.min(c,99)+'%';$('capTxt').textContent=P.dir?'移動中は照準できない':`最大 ${Math.round(c)}% ・ 1秒で約${Math.round(14*P.aimSpd/34)}%`;
+ const c=cap(P);$('aimNum').textContent=P.aiming?Math.round(P.aim)+'%':'—';$('cancel').disabled=!P.aiming;$('aimBar').style.width=(P.aiming?P.aim:0)+'%';$('capMark').style.left=Math.min(c,99)+'%';$('capTxt').textContent=P.dir?'移動中は照準できない':`最大 ${Math.round(c)}% ・ 1秒で約${Math.round(14*P.aimSpd/34*TEMPO)}%`;
  const fb=$('fire');fb.disabled=!G.run||P.reload>0;fb.textContent=P.reload>0?`装填中 ${P.reload.toFixed(1)}`:P.aiming?'撃て!':'狙撃';fb.classList.toggle('hot',P.aiming);
- $('dist').textContent=Math.round(dist())+'m';$('timer').textContent=Math.max(0,Math.ceil(LIMIT-G.t));
+ $('dist').textContent=Math.round(dist())+'m';$('timer').textContent=Math.max(0,Math.ceil((LIMIT-G.t)/TEMPO));
  P.squads.forEach((q,i)=>{const s=$('sqs'+i);if(!s)return;s.textContent=`${q.men}名`+(q.men<=0?' 全滅':q.busy>0?' 突撃中':q.used?' 使用済み':q.cd>0?` 再使用 ${Math.ceil(q.cd)}秒`:` ・ ${SQ[q.t][1]}`);$('sqc'+i).style.width=(q.used?0:q.cd/SQ[q.t][2]*100)+'%';s.parentElement.disabled=!G.run||q.men<=0||q.cd>0});
  if(logDirty){$('log').innerHTML=G.log.map(l=>`<li class="${l.c||''}">${l.m}</li>`).join('');logDirty=false}}
 /* ================= 入力 ================= */
@@ -544,7 +545,7 @@ addEventListener('blur',()=>{if(playing())pause()});
 /* ================= ループ ================= */
 let last=performance.now();
 function loop(now){let dt=Math.min(.05,(now-last)/1000);last=now;
- if(mode==='battle'||mode==='title'){if(G&&!G.paused){if(G.freeze>0){G.freeze-=dt;draw(0)}else{let d=dt;if(G.slow>0){G.slow-=dt;d*=.28}if(G.run)step(d);draw(d)}}else if(G)draw(0);hud(dt)}
+ if(mode==='battle'||mode==='title'){if(G&&!G.paused){if(G.freeze>0){G.freeze-=dt;draw(0)}else{let d=dt;if(G.slow>0){G.slow-=dt;d*=.28}if(G.run)step(d*(G.demo?1:TEMPO));draw(d)}}else if(G)draw(0);hud(dt)}
  requestAnimationFrame(loop)}
 fit();title();requestAnimationFrame(loop);
 }
