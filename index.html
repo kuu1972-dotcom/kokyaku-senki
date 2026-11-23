@@ -147,7 +147,7 @@ summary{cursor:pointer;font-weight:700;min-height:44px;display:flex;align-items:
   <ul class="lst">
     <li>地図で次の拠点を選んで出撃。拠点ごとに敵機が1〜3機いて、1機ずつ一騎打ち。毎回どの機体を出すか選ぶ。</li>
     <li>受けた損傷は次の戦いに持ち越し。格納庫で資金を払って修理・改造・分隊の補充。</li>
-    <li>戦闘：狙撃ボタンで自分の機体の後ろからの視点に切り替わる。照準%は30%から1秒ごとに上がり、上がるほど敵がズームされてブレも小さくなる。待つほど当てやすいけど、その間に敵も狙ってくる。</li><li>当たった場所で効果が変わる：胴体=大ダメージ、脚部=足が鈍る、主砲=敵の照準が狂う。覗き窓・機関部(背中)・ハッチは致命打。</li><li>敵の照準が上がったら、照準解除か移動でかわす。</li>
+    <li>戦闘：狙撃ボタンで自分の機体の後ろからの視点に切り替わる。照準%は30%から1秒ごとに上がり、上がるほど敵がズームされてブレも小さくなる。待つほど当てやすいけど、その間に敵も狙ってくる。</li><li>狙撃中の敵は正面を向いてる。当たった場所で効果が変わる：胴体=大ダメージ、脚部=足が鈍る、砲口=敵の照準が狂う。覗き窓(赤帯の上の細いスリット)とハッチ(頭の上)は致命打。</li><li>敵の照準が上がったら、照準解除か移動でかわす。</li>
     <li>乗員は3人。砲手は命中・撃破、装填手は発砲、操縦手は敵弾をかわすと経験を積み、Lv5まで育つ(戦闘中でもすぐ反映)。分隊も活躍すると★3まで熟練する。</li>
     <li>操作：マウスは動かして狙いクリックで発射。スマホは画面をなぞって照準、撃て!で発射。キーは A/D 移動、Space 照準/発射、照準中は WASD・矢印で狙う、X 解除、1〜2 分隊、P 停止。</li>
   </ul>
@@ -412,15 +412,31 @@ function scopeStep(dt){if(G.impact)G.impact.l-=dt;const P=G.P;if(!P.aiming||!G.l
  G.jolt.x*=Math.max(0,1-dt*5);G.jolt.y*=Math.max(0,1-dt*5);
  const A=R*(.3*Math.pow(1-clamp(P.aim,0,100)/100,1.2)+.006)*P.swayMul,t=G.t;
  G.sway={x:A*(Math.sin(t*1.9)*.6+Math.sin(t*3.7+1.3)*.4)+G.jolt.x,y:A*(Math.sin(t*2.3+.7)*.55+Math.sin(t*4.1)*.45)*.8+G.jolt.y}}
-function hitTest(px,py){const E=G.E,g=scopeGeom(),lx=-(px-g.ex)/g.s,hu=(g.eg-py)/g.s,bobU=Math.abs(Math.sin(E.phase))*3*(E.legs<40?2.2:1),hh=hu-bobU,inn=(a,b,c,d)=>lx>=a&&lx<=b&&hh>=c&&hh<=d;
+function hitTest(px,py){const E=G.E,g=scopeGeom(),lx=(px-g.ex)/g.s,hu=(g.eg-py)/g.s,bobU=Math.abs(Math.sin(E.phase))*3*(E.legs<40?2.2:1),hh=hu-bobU,inn=(a,b,c,d)=>lx>=a&&lx<=b&&hh>=c&&hh<=d;
  if(hu<0||E.hp<=0)return null;
- if(inn(9,24,51.5,57.5))return{part:'body',crit:1,lab:'覗き窓に直撃!'};
- if(inn(-48,-35,37,57))return{part:'body',crit:1,lab:'機関部に直撃!'};
- if(!E.art&&inn(-19,3,63,74))return{part:'body',crit:1,lab:'ハッチに直撃!'};
- const rise=E.art?(lx-24)*.12:0;if(lx>=22&&lx<=24+E.bl+6&&hh>=47.5+rise&&hh<=57.5+rise)return{part:'gun',crit:0,lab:'主砲に命中'};
- if(inn(-39,33,31,65)||(E.art&&inn(-31,11,62,71)))return{part:'body',crit:0,lab:'胴体に命中'};
- if(lx>=-34&&lx<=28&&hh<=38)return{part:'legs',crit:0,lab:'脚部に命中'};
+ if(inn(-13,13,49,55))return{part:'body',crit:1,lab:'覗き窓に直撃!'};
+ if(!E.art&&inn(-11,11,63,74))return{part:'body',crit:1,lab:'ハッチに直撃!'};
+ const my=E.art?50:46;if(Math.hypot(lx-16,hh-my)<=8.5||inn(8,24,39,53))return{part:'gun',crit:0,lab:'主砲に命中'};
+ if((hh>=32&&hh<=64&&Math.abs(lx)<=35-(hh-32)*5/32)||(E.art&&inn(-23,23,62,71)))return{part:'body',crit:0,lab:'胴体に命中'};
+ if(hh<=38&&Math.abs(Math.abs(lx)-23)<=(hh<4?12:8))return{part:'legs',crit:0,lab:'脚部に命中'};
  return null}
+function front(u,X,gy,s){const c=u.col,bob=Math.abs(Math.sin(u.phase))*3*s*(u.legs<40?2.2:1),by=gy-bob,Y=h=>by-h*s;
+ ctx.save();ctx.translate(X,0);ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(0,gy,46*s,6*s,0,0,7);ctx.fill();
+ let n=0;for(const q of u.squads){if(q.busy>0||q.men<=0)continue;for(let j=0;j<q.men;j++,n++){const px=(n%2?1:-1)*(46+Math.floor(n/2)*6)*s,py=gy;ctx.fillStyle=c[1];ctx.fillRect(px,py-8*s,2.6*s,7*s);ctx.beginPath();ctx.arc(px+1.3*s,py-9.6*s,1.9*s,0,7);ctx.fill()}}
+ ctx.lineCap='round';
+ for(const sd of [-1,1]){const lift=u.dir?Math.max(0,Math.sin(u.phase+(sd>0?Math.PI:0)))*6*s:0,hx=sd*18*s,hy=Y(38),kx=sd*28*s,ky=Y(20),fx=sd*22*s,fy=gy-lift;
+  ctx.strokeStyle=c[1];ctx.lineWidth=10*s;ctx.beginPath();ctx.moveTo(hx,hy);ctx.lineTo(kx,ky);ctx.stroke();ctx.strokeStyle=c[0];ctx.lineWidth=8*s;ctx.beginPath();ctx.moveTo(kx,ky);ctx.lineTo(fx,fy);ctx.stroke();
+  ctx.fillStyle=c[1];ctx.fillRect(fx-11*s,fy-4*s,22*s,4*s);ctx.fillStyle=c[2];ctx.beginPath();ctx.arc(kx,ky,4.2*s,0,7);ctx.fill()}
+ ctx.fillStyle=c[0];ctx.beginPath();ctx.moveTo(-35*s,Y(32));ctx.lineTo(35*s,Y(32));ctx.lineTo(30*s,Y(64));ctx.lineTo(-30*s,Y(64));ctx.closePath();ctx.fill();
+ ctx.fillStyle=c[1];ctx.fillRect(-35*s,Y(38),70*s,6*s);
+ ctx.fillStyle=c[2];ctx.globalAlpha=.55;ctx.beginPath();ctx.moveTo(-30*s,Y(64));ctx.lineTo(30*s,Y(64));ctx.lineTo(31.3*s,Y(57));ctx.lineTo(-31.3*s,Y(57));ctx.closePath();ctx.fill();ctx.globalAlpha=1;
+ ctx.fillStyle='#c23a24';ctx.fillRect(-33*s,Y(44),66*s,4*s);
+ ctx.fillStyle='#16160f';ctx.fillRect(-12*s,Y(54),24*s,4*s);ctx.fillStyle='rgba(255,180,120,.35)';ctx.fillRect(-10*s,Y(53),6*s,1.5*s);
+ if(!u.art){ctx.fillStyle=c[1];ctx.fillRect(-10*s,Y(73),20*s,9*s);ctx.fillStyle=c[2];ctx.fillRect(-10*s,Y(73),20*s,2*s)}else{ctx.fillStyle=c[1];ctx.fillRect(-23*s,Y(70),46*s,8*s)}
+ const my=u.art?50:46;ctx.fillStyle=c[1];ctx.fillRect(8*s,Y(53),16*s,14*s);ctx.fillStyle='#1a1a12';ctx.beginPath();ctx.arc(16*s,Y(my),6*s,0,7);ctx.fill();ctx.strokeStyle=c[2];ctx.lineWidth=2*s;ctx.stroke();ctx.fillStyle='#000';ctx.beginPath();ctx.arc(16*s,Y(my),3*s,0,7);ctx.fill();
+ if(u.flash>0){const a=u.flash/.14;ctx.fillStyle=`rgba(255,230,140,${a})`;ctx.beginPath();ctx.arc(16*s,Y(my),24*s*a+6*s,0,7);ctx.fill()}
+ if(u.hp<u.max*.25&&Math.random()<.5){ctx.fillStyle='rgba(255,140,40,.8)';ctx.beginPath();ctx.arc(rnd(-20,20)*s,Y(rnd(40,60)),rnd(3,7)*s,0,7);ctx.fill()}
+ ctx.restore()}
 function ownBack(P,k){const s=Math.min(W*.9,H)/320*1.6,x=W<600?W*.06:W*.17,b=H+20*s,bob=Math.abs(Math.sin(P.phase+G.t*.8))*2*s,rc=P.recoil*10*s,dead=P.hp<=0,c=dead?['#3a3a32','#2a2a24','#4c4c42']:P.col,dk=k===3;
  ctx.save();ctx.translate(x,b+rc-bob);
  ctx.fillStyle=c[1];ctx.beginPath();ctx.moveTo(-60*s,0);ctx.lineTo(-44*s,-70*s);ctx.lineTo(-24*s,-70*s);ctx.lineTo(-30*s,0);ctx.fill();ctx.beginPath();ctx.moveTo(30*s,0);ctx.lineTo(24*s,-70*s);ctx.lineTo(44*s,-70*s);ctx.lineTo(60*s,0);ctx.fill();
@@ -443,7 +459,7 @@ function drawScope(dt){const g=scopeGeom(),{R,cx,cy,s,z}=g,k=G.sky,sk=SKY[k],gr=
  ctx.fillStyle=SEA[k];ctx.fillRect(0,hz,W,R*.06*z);
  gg=ctx.createLinearGradient(0,hz+R*.06*z,0,H);gg.addColorStop(0,gr[0]);gg.addColorStop(.5,gr[1]);gg.addColorStop(1,gr[2]);ctx.fillStyle=gg;ctx.fillRect(0,hz+R*.06*z,W,H);
  const span=W+60,gap=34*Math.sqrt(z);ctx.lineWidth=2*S0*Math.sqrt(z);for(let i=0;i<span/gap+2;i++){const x=-30+(((i*gap-shift)%span)+span)%span,y0=hz+R*.11*z;ctx.strokeStyle=k===3?'#22291f':['#5f6b34','#6f7a3c','#4f5a2c'][i%3];ctx.beginPath();ctx.moveTo(x,y0);ctx.lineTo(x+2,y0-R*.09*z*(.6+(i%5)/10));ctx.stroke()}
- mech(E,g.ex,g.eg,s,true);
+ front(E,g.ex,g.eg,s);
  if(E.smoke>0){const a=Math.min(1,E.smoke/1.5)*.7;for(let i=0;i<8;i++){ctx.fillStyle=`rgba(205,200,186,${a})`;ctx.beginPath();ctx.arc(g.ex+(i-3.5)*30*s+Math.sin(G.t*1.3+i)*8*s,g.eg-20*s-(i%3)*24*s,(28+(i%2)*12)*s,0,7);ctx.fill()}}
  const im=G.impact,hold=im&&im.l>0;
  if(hold){const a=clamp(im.l/.6,0,1);if(im.r){const g2=ctx.createRadialGradient(im.x,im.y,0,im.x,im.y,R*.22);g2.addColorStop(0,`rgba(255,250,220,${a})`);g2.addColorStop(.45,`rgba(255,170,70,${a*.85})`);g2.addColorStop(1,'rgba(255,90,30,0)');ctx.fillStyle=g2;ctx.beginPath();ctx.arc(im.x,im.y,R*.22,0,7);ctx.fill()}
