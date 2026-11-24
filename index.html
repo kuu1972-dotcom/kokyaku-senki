@@ -155,7 +155,7 @@ summary{cursor:pointer;font-weight:700;min-height:44px;display:flex;align-items:
     <li>受けた損傷は次の戦いに持ち越し。格納庫で資金を払って修理・改造・分隊の補充。</li>
     <li>戦闘：狙撃ボタンで自分の機体の後ろからの視点に切り替わる。照準%は30%から1秒ごとに上がり、上がるほど敵がズームされてブレも小さくなる。待つほど当てやすいけど、その間に敵も狙ってくる。</li><li>狙撃中の敵は正面を向いてる。当たった場所で効果が変わる：胴体=大ダメージ、脚部=足が鈍る、砲口=敵の照準が狂う。覗き窓(赤帯の上の細いスリット)とハッチ(頭の上)は致命打。</li><li>敵の照準が上がったら、照準解除か移動でかわす。</li>
     <li>乗員は3人。砲手は命中・撃破、装填手は発砲、操縦手は敵弾をかわすと経験を積み、Lv5まで育つ(戦闘中でもすぐ反映)。分隊も活躍すると★3まで熟練する。</li>
-    <li>機体は6種類、武器は7種類。左右の腕に別々の武器を積んで、戦闘中に切り替えられる(片方が装填中でも、もう片方で撃てる)。</li><li>撃った弾はカメラが追いかける。着弾まで少しスローになる。</li><li>回避モード：ONにすると、狙撃してない間は機体が自分で小刻みに動いて敵弾をかわす。かわせる確率は機体の速さ・操縦手Lv・機体の回避性能で決まる(回避力 S〜C)。狙撃を押すと止まって照準に入る。</li><li>戦闘離脱：背を向けて全力で逃げる。650m逃げ切れば離脱成功。でも背中は1.25倍のダメージ。</li><li>全機が大破するとゲームオーバー。作戦はやり直しだけど、乗員のLvと分隊の★は引き継がれる。制圧済みの拠点は何度でも再戦できる。</li><li>操作：マウスは動かして狙いクリックで発射。スマホは画面をなぞって照準、撃て!で発射。キーは A/D 移動、Space 照準/発射、照準中は WASD・矢印で狙う、X 解除、Q/E 左右の腕、V 回避モード、F 離脱、1〜2 分隊、P 停止。</li>
+    <li>機体は6種類、武器は7種類。左右の腕に別々の武器を積んで、戦闘中に切り替えられる(片方が装填中でも、もう片方で撃てる)。</li><li>撃つとカメラが砲弾の真後ろに付いて、弾と一緒に敵へ飛んでいく。着弾まで少しスロー。当たったら横からの爆発に切り替わる。</li><li>回避モード：ONにすると、狙撃してない間は機体が自分で小刻みに動いて敵弾をかわす。かわせる確率は機体の速さ・操縦手Lv・機体の回避性能で決まる(回避力 S〜C)。狙撃を押すと止まって照準に入る。</li><li>戦闘離脱：背を向けて全力で逃げる。650m逃げ切れば離脱成功。でも背中は1.25倍のダメージ。</li><li>全機が大破するとゲームオーバー。作戦はやり直しだけど、乗員のLvと分隊の★は引き継がれる。制圧済みの拠点は何度でも再戦できる。</li><li>操作：マウスは動かして狙いクリックで発射。スマホは画面をなぞって照準、撃て!で発射。キーは A/D 移動、Space 照準/発射、照準中は WASD・矢印で狙う、X 解除、Q/E 左右の腕、V 回避モード、F 離脱、1〜2 分隊、P 停止。</li>
   </ul>
   <p class="note">架空の戦後史を舞台にしたオリジナル試作。既存作品の名称や設定は使っていません。進行はこのブラウザに保存されます。</p>
 </details>
@@ -326,7 +326,7 @@ function fire(u){if(!u.aiming)return;const t=foe(u);
  if(u.side<0){const a=u.arm,w=WEAP[u['w'+a]],base=relToScreen(),pts=[];
   for(let i=0;i<w.shots;i++){const sw=i?swayAt(G.t+(G.swPh||0)+i*.37,(G.swA||0)*(w.look==='pod'?1.5:1)+SR()*.02*i):(G.sway||{x:0,y:0});const x=base.x+sw.x+(i?G.jolt.x:0),y=base.y+sw.y;let r=hitTest(x,y);if(!r&&w.burn&&flameNear(x,y))r={part:'body',crit:0,lab:'炎が包んだ'};pts.push({x,y,r})}
   G.impact={pts,l:.35,fired:1};u.aiming=false;u.rl[a]=u.rmx[a]*1.1*(1+(100-u.gun)/220);u.reload=u.rl[a];u.fl[a]=.14;u.flash=.14;u.recoil=1;
-  const sp=w.look==='pod'?700:w.look==='flame'?500:1500;pts.forEach((p,i)=>G.shots.push({from:u,to:t,t:-.35-i*.14,T:Math.max(.25,dist()/sp),res:p.r,pl:1,w:u['w'+a],rk:w.look==='pod'?2:0}));u.aim=0;const sh=G.shots.slice(-pts.length);G.follow={first:sh[0],last:sh[sh.length-1],hold:0,hx:t.x};
+  const sp=w.look==='pod'?700:w.look==='flame'?500:1500,gg=scopeGeom();pts.forEach((p,i)=>G.shots.push({from:u,to:t,t:-.35-i*.14,T:Math.max(.25,dist()/sp),res:p.r,pl:1,w:u['w'+a],rk:w.look==='pod'?2:0,lx:(p.x-gg.ex)/gg.s,hu:(gg.eg-p.y)/gg.s,look:w.look}));u.aim=0;const sh=G.shots.slice(-pts.length);G.follow={first:sh[0],last:sh[sh.length-1],hold:0,hx:t.x};
   gainCrew(u.src,'ldr',8);sfx(w.look==='pod'?'rocket':'fire');G.shake=Math.max(G.shake,6);const hits=pts.filter(p=>p.r).length;say(`${w.n} 発射!`,'p');return}
  u.aiming=false;u.reload=u.rmax*1.3*(1+(100-u.gun)/220);u.flash=.14;u.recoil=1;
  G.shots.push({from:u,to:t,t:0,T:Math.max(.25,dist()/1500),p:u.aim,part:u.part});u.aim=0;
@@ -539,6 +539,19 @@ function ownBack(P,k,tg){const s=Math.min(W*.9,H)/320*1.6,x=W<600?W*.08:W*.19,b=
   if(P.fl[a]>0){const q=P.fl[a]/.14;ctx.fillStyle=w.look==='flame'?`rgba(255,150,50,${q})`:`rgba(255,230,140,${q})`;ctx.beginPath();ctx.arc(L+6*s,0,(w.look==='flame'?40:24)*s*q+6*s,0,7);ctx.fill()}
   ctx.restore()}
  ctx.restore()}
+const sz0=p=>0;
+function drawChase(c,dt){const E=c.to,k=G.sky,sk=SKY[k],gr=GRD[k],p=clamp(c.t/c.T,0,1),D0=Math.abs(c.to.x-c.from.x),D=Math.max(6,D0*(1-p)),R=SR(),cx=W/2,cy=H*.5,s=R/150*clamp(330*DS/D,.04,10)*E.size,hz=H*.4,bx=cx,by=cy+R*.42*Math.pow(1-p,.8)+sz0(p);
+ let g=ctx.createLinearGradient(0,0,0,hz);g.addColorStop(0,sk[0]);g.addColorStop(.6,sk[1]);g.addColorStop(1,sk[2]);ctx.fillStyle=g;ctx.fillRect(0,0,W,hz+1);
+ ctx.fillStyle=k===3?'#18222a':'#4b5a50';ctx.beginPath();ctx.moveTo(-W*.1,hz);ctx.quadraticCurveTo(W*.2,hz-H*.07,W*.5,hz);ctx.fill();
+ ctx.fillStyle=SEA[k];ctx.fillRect(0,hz,W,H*.025);g=ctx.createLinearGradient(0,hz+H*.025,0,H);g.addColorStop(0,gr[0]);g.addColorStop(.5,gr[1]);g.addColorStop(1,gr[2]);ctx.fillStyle=g;ctx.fillRect(0,hz+H*.025,W,H);
+ G.ct=(G.ct||0)+dt*(2.5+p*4);ctx.lineCap='round';
+ for(let i=0;i<26;i++){const ang=(i/26)*Math.PI*2+.13,f=((i*.37+G.ct)%1),r0=Math.pow(f,2.2)*Math.max(W,H)*.9,r1=r0+Math.pow(f,2)*R*.5,a=f*.55;ctx.strokeStyle=i%2?`rgba(255,250,235,${a*.5})`:`rgba(60,55,40,${a*.6})`;ctx.lineWidth=1+f*3;ctx.beginPath();ctx.moveTo(cx+Math.cos(ang)*r0,cy+Math.sin(ang)*r0*.7);ctx.lineTo(cx+Math.cos(ang)*r1,cy+Math.sin(ang)*r1*.7);ctx.stroke()}
+ const ex=cx-c.lx*s,eg=cy+c.hu*s;if(s<14)front(E,ex,eg,s);if(p<.85){ctx.strokeStyle=`rgba(255,90,60,${.7*(1-p)})`;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,R*.05,0,7);ctx.stroke()}
+ for(let j=0;j<6;j++){const f=((j/6+G.ct*.6)%1),rr=R*(.04+f*.5),a=(1-f)*.16;ctx.fillStyle=`rgba(225,218,200,${a})`;ctx.beginPath();ctx.arc(bx+Math.sin(j*2.1)*rr*.2,by+rr*.55,rr,0,7);ctx.fill()}
+ const sz=Math.max(7,10*S0)*(.7+.5*p);if(c.look==='pod'||c.look==='flame'){const fl=ctx.createRadialGradient(bx,by,0,bx,by,sz*3.2);fl.addColorStop(0,'rgba(255,250,220,1)');fl.addColorStop(.35,'rgba(255,170,60,.9)');fl.addColorStop(1,'rgba(255,80,20,0)');ctx.fillStyle=fl;ctx.beginPath();ctx.arc(bx,by,sz*3.2,0,7);ctx.fill();ctx.fillStyle='#4a4436';ctx.beginPath();ctx.arc(bx,by,sz*.9,0,7);ctx.fill()}
+ else{const gl=ctx.createRadialGradient(cx,cy,0,cx,cy,sz*2.6);gl.addColorStop(0,'rgba(255,240,190,.95)');gl.addColorStop(.4,'rgba(255,190,90,.5)');gl.addColorStop(1,'rgba(255,150,60,0)');ctx.fillStyle=gl;ctx.beginPath();ctx.arc(cx,cy,sz*2.6,0,7);ctx.fill();ctx.fillStyle='#b8893c';ctx.beginPath();ctx.arc(cx,cy,sz,0,7);ctx.fill();ctx.strokeStyle='#7a5a24';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle='#ffe6a0';ctx.beginPath();ctx.arc(cx,cy,sz*.45,0,7);ctx.fill()}
+ g=ctx.createRadialGradient(cx,cy,Math.min(W,H)*.35,cx,cy,Math.max(W,H)*.75);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.55)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ const fz=Math.round(Math.max(16,20*S0));ctx.font=`400 ${fz}px "Dela Gothic One",sans-serif`;ctx.textAlign='right';ctx.lineWidth=4;ctx.strokeStyle='#0a0c07';const tt=`着弾まで ${Math.round(D)}m`;ctx.strokeText(tt,W-14,H-14);ctx.fillStyle='#ffe39a';ctx.fillText(tt,W-14,H-14)}
 function drawScope(dt){const g=scopeGeom(),{R,cx,cy,s,z}=g,k=G.sky,sk=SKY[k],gr=GRD[k],E=G.E,P=G.P;
  const hz=cy-R*.12*z;
  let gg=ctx.createLinearGradient(0,0,0,hz);gg.addColorStop(0,sk[0]);gg.addColorStop(.6,sk[1]);gg.addColorStop(1,sk[2]);ctx.fillStyle=gg;ctx.fillRect(0,0,W,hz+1);
@@ -577,7 +590,7 @@ function draw(dt){if(!G)return;const T=G.demo?1:1;ctx.setTransform(1,0,0,1,0,0);
  const F=G.follow;if(!G.demo&&F){const c=F.hold>0?null:(F.first.t>=0&&G.shots.includes(F.first)?F.first:F.last),tx=F.hold>0?F.hx:(c.t<0?c.from.x:shellX(c));CAM.x+=(tx-CAM.x)*Math.min(1,dt*9);CAM.z+=(W/520-CAM.z)*Math.min(1,dt*4)}
  else if(!G.demo){const cx=(G.P.x+G.E.x)/2,tz=clamp(W/(dist()*1.12+420),W/2950,W/700);CAM.x+=(cx-CAM.x)*Math.min(1,dt*2.5);CAM.z+=(tz-CAM.z)*Math.min(1,dt*1.8)}else{CAM.x=510+Math.sin(performance.now()/4000)*40;CAM.z=W/700;G.P.phase+=dt*.3;G.E.phase+=dt*.25}
  const sh=G.shake;ctx.save();if(sh>0)ctx.translate(rnd(-sh,sh)*S0*.6,rnd(-sh,sh)*S0*.6);G.shake=Math.max(0,sh-dt*40);
- const SCP=!G.demo&&(G.P.aiming||(G.impact&&G.impact.l>0));if(SCP){drawScope(dt)}else{scene();mech(G.P);mech(G.E);
+ const SCP=!G.demo&&(G.P.aiming||(G.impact&&G.impact.l>0)),CH=F&&F.hold<=0?(F.first.t>=0&&G.shots.includes(F.first)?F.first:F.last):null,CHS=!SCP&&CH&&CH.t>=0&&G.shots.includes(CH);if(SCP){drawScope(dt)}else if(CHS){drawChase(CH,dt)}else{scene();mech(G.P);mech(G.E);
  for(const s of G.shots){if(s.t<0)continue;const p=s.t/s.T,dirf=s.from.side<0?(s.from.flee?-1:1):-1,x0=wx(s.from.x)+dirf*(s.from.bl+30)*SC()*s.from.size,x1=wx(s.to.x),x=x0+(x1-x0)*p,y=s.rk===1?GY-(12+Math.sin(Math.PI*p)*30)*SC():GY-44*SC()-Math.sin(Math.PI*p)*(s.rk?30:14)*SC();
   const big=F&&s.pl;ctx.save();ctx.shadowColor='#ffcc66';ctx.shadowBlur=big?22:12;ctx.strokeStyle=s.rk?'#ffb070':'#fff4c8';ctx.lineWidth=(big?6:3.2)*S0;ctx.beginPath();ctx.moveTo(x-(x1-x0)*(big?.02:.07)-(big?60*S0*Math.sign(x1-x0):0),y+2*S0);ctx.lineTo(x,y);ctx.stroke();if(big){ctx.fillStyle='#fff8dc';ctx.beginPath();ctx.ellipse(x,y,9*S0,4*S0,0,0,7);ctx.fill()}ctx.restore();
   if(big&&dt>0&&Math.random()<.8)G.parts.push({k:'smoke',x:shellX(s)+rnd(-3,3),y:(GY-y)/SC()+rnd(-1.5,1.5),vx:0,vy:rnd(2,6),r:rnd(1.2,2.4),l:.4,m:.4,c:'#e8e0cc'})}
