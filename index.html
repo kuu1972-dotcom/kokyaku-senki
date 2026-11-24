@@ -517,7 +517,7 @@ function front(u,X,gy,s){const c=u.col,bob=Math.abs(Math.sin(u.phase))*3*s*(u.le
   if(u.flash>0&&sd<0){const a=u.flash/.14;ctx.fillStyle=`rgba(255,230,140,${a})`;ctx.beginPath();ctx.arc(cx,cy,24*s*a+6*s,0,7);ctx.fill()}}
  if(u.hp<u.max*.25&&Math.random()<.5){ctx.fillStyle='rgba(255,140,40,.8)';ctx.beginPath();ctx.arc(rnd(-20,20)*s,Y(rnd(40,60)),rnd(3,7)*s,0,7);ctx.fill()}
  ctx.restore()}
-function ownBack(P,k,tg){const s=Math.min(W*.9,H)/320*1.6,x=W<600?W*.08:W*.19,b=H+20*s,bob=Math.abs(Math.sin(P.phase+G.t*.8))*2*s,rc=P.recoil*10*s,dead=P.hp<=0,c=dead?['#3a3a32','#2a2a24','#4c4c42']:P.col;
+function ownBack(P,k,tg){const s=Math.min(W*.9,H)/320*(W<600?1.05:1.2),x=W<600?W*.02:W*.12,b=H+46*s,bob=Math.abs(Math.sin(P.phase+G.t*.8))*2*s,rc=P.recoil*10*s,dead=P.hp<=0,c=dead?['#3a3a32','#2a2a24','#4c4c42']:P.col;
  ctx.save();ctx.translate(x,b+rc-bob);
  ctx.fillStyle=c[1];ctx.beginPath();ctx.moveTo(-60*s,0);ctx.lineTo(-44*s,-70*s);ctx.lineTo(-24*s,-70*s);ctx.lineTo(-30*s,0);ctx.fill();ctx.beginPath();ctx.moveTo(30*s,0);ctx.lineTo(24*s,-70*s);ctx.lineTo(44*s,-70*s);ctx.lineTo(60*s,0);ctx.fill();
  ctx.fillStyle=c[2];ctx.beginPath();ctx.arc(-34*s,-70*s,7*s,0,7);ctx.arc(34*s,-70*s,7*s,0,7);ctx.fill();
@@ -528,7 +528,7 @@ function ownBack(P,k,tg){const s=Math.min(W*.9,H)/320*1.6,x=W<600?W*.08:W*.19,b=
  ctx.fillStyle=c[1];ctx.fillRect(-20*s,-156*s,30*s,20*s);ctx.fillStyle=c[2];ctx.fillRect(-20*s,-156*s,30*s,3*s);
  ctx.strokeStyle=c[1];ctx.lineWidth=1.4*s;ctx.beginPath();ctx.moveTo(-14*s,-156*s);ctx.quadraticCurveTo(-18*s,-172*s,-28*s,-184*s);ctx.stroke();
  if(!dead){ctx.fillStyle='#ebe5cd';ctx.fillRect(-56*s,-122*s,12*s,12*s);ctx.fillStyle=c[0];ctx.fillRect(-52*s,-118*s,4*s,4*s)}
- for(const a of ['L','R']){const sd=a==='L'?-1:1,w=WEAP[P['w'+a]],act=P.arm===a,ox=sd*76*s,oy=-114*s,gx=tg.x-x,gy2=tg.y-(b+rc-bob),ang=Math.atan2(gy2-oy,gx-ox),L=(w.look==='pod'?24:w.len*.85+16)*s,T=w.w*2.2*s;
+ for(const a of ['L','R']){const sd=a==='L'?-1:1,w=WEAP[P['w'+a]],act=P.arm===a,ox=sd*76*s,oy=-114*s,gx=tg.x-x,gy2=tg.y-(b+rc-bob),ang=Math.atan2(gy2-oy,gx-ox),L=Math.min((w.look==='pod'?24:w.len*.85+16)*s,Math.hypot(gx-ox,gy2-oy)*.32),T=w.w*2.2*s;
   ctx.save();ctx.translate(ox,oy);ctx.fillStyle=act?c[2]:c[1];ctx.fillRect(-16*s,-16*s,32*s,32*s);ctx.fillStyle=c[1];ctx.fillRect(-13*s,-13*s,26*s,26*s);ctx.rotate(ang);
   const tube=(y0,t0,len)=>{ctx.beginPath();ctx.moveTo(0,y0-t0/2);ctx.lineTo(len,y0-t0*.35);ctx.lineTo(len,y0+t0*.35);ctx.lineTo(0,y0+t0/2);ctx.closePath();ctx.fill()};
   ctx.fillStyle=act?c[0]:c[1];
