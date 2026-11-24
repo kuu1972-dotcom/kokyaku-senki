@@ -336,7 +336,7 @@ function impactFx(t,fx,crit,dir){const y=72*t.size,x=t.x;
  else if(fx==='flame'){for(let i=0;i<12;i++)G.parts.push({k:'fire',x:x+rnd(-18,18),y:y+rnd(-30,30),vx:rnd(-6,6),vy:rnd(8,24),r:rnd(8,14),l:rnd(.5,.9),m:.9})}
  else boom(x,y,crit?1.6:1.1,'#ffcf7a')}
 function shellX(s){return s.from.x+(s.to.x-s.from.x)*clamp(s.t/s.T,0,1)}
-function swayAt(t,A){return{x:A*(Math.sin(t*1.9)*.6+Math.sin(t*3.7+1.3)*.4),y:A*(Math.sin(t*2.3+.7)*.55+Math.sin(t*4.1)*.45)*.8}}
+function swayAt(t,A){return{x:A*(Math.sin(t*1.9)*.5+Math.sin(t*3.7+1.3)*.3+Math.sin(t*7.3+.4)*.14+Math.sin(t*12.1)*.08),y:A*(Math.sin(t*2.3+.7)*.45+Math.sin(t*4.1)*.33+Math.sin(t*8.7+2)*.14+Math.sin(t*13.3+1)*.08)*.85}}
 function flameNear(x,y){const g=scopeGeom();return Math.hypot((x-g.ex)/g.s,(g.eg-y)/g.s-76)<48}
 function fire(u){if(!u.aiming)return;const t=foe(u);
  if(u.side<0){const a=u.arm,w=WEAP[u['w'+a]],base=relToScreen(),pts=[];
@@ -520,7 +520,7 @@ function scopeStep(dt){if(G.impact)G.impact.l-=dt;const P=G.P;if(!P.aiming||!G.l
  moveRet(((KEYS.r||0)-(KEYS.l||0))*sp*.6,((KEYS.d||0)-(KEYS.u||0))*sp*.6);
  G.lock.lat+=(G.E.lat-G.lock.lat)*Math.min(1,dt*2.2);
  G.jolt.x*=Math.max(0,1-dt*5);G.jolt.y*=Math.max(0,1-dt*5);
- const A=R*(.45*Math.pow(1-clamp(P.aim,0,100)/100,1.2)+.004)*P.swayMul*w.sway*(w.far?(dist()>1200?.75:1.3):1),t=G.t+(G.swPh||0);G.swA=A;
+ const A=R*(.75*Math.pow(1-clamp(P.aim,0,100)/100,1.05)+.01)*P.swayMul*w.sway*(w.far?(dist()>1200?.75:1.3):1),t=G.t+(G.swPh||0);G.swA=A;
  const sw=swayAt(t,A);G.sway={x:sw.x+G.jolt.x,y:sw.y+G.jolt.y}}
 function hitTest(px,py){const E=G.E,g=scopeGeom(),lx=(px-g.ex)/g.s,hu=(g.eg-py)/g.s,hh=hu-bobOf(E),inn=(a,b,c,d)=>lx>=a&&lx<=b&&hh>=c&&hh<=d;
  if(hu<0||E.hp<=0)return null;
