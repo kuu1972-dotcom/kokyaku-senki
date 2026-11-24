@@ -10,7 +10,7 @@ const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
 let js = scripts[scripts.length - 1][1].trimEnd();
 // スクリプト全体は { ... } のブロック。最後の } の直前にテスト用の出口を差し込む
 js = js.slice(0, -1) + `;globalThis.T={get S(){return S},get G(){return G},get BT(){return BT},
- startStage,startDuel,step,draw,hud,act,hit,afterDuel,mapView,hangar,pre,newGame,flee,setArm,toggleEv,avail,stats,
+ startStage,startDuel,step,draw,hud,act,hit,afterDuel,mapView,hangar,pre,newGame,flee,setArm,useArmButton,toggleEv,avail,stats,
  scopeGeom,hitTest,retPt,get WEAP(){return WEAP},get BASE(){return BASE},get NODES(){return NODES},get mode(){return mode}}}`;
 
 // ---- ブラウザの代わり(何もしない偽物) ----
@@ -124,6 +124,20 @@ T.G.lock = {lat:T.G.E.lat,off:0};
 const g = T.scopeGeom(), at = (x,y) => T.hitTest(g.ex+x*g.s,g.eg-(y+1.6)*g.s);
 ok(at(0,79)?.part === 'body' && at(-50,78)?.part === 'gun' && at(26,30)?.part === 'legs', '装甲・武装・脚部の判定を維持する');
 ok(at(0,100)?.crit && at(0,111)?.crit && !at(0,30) && !at(75,78), '弱点と機体外の判定を維持する');
+
+// 10) 武器ボタンは選択と照準を兼ね、照準中の同じ腕だけ発射する
+T.newGame(); T.startStage(0); T.startDuel(0);
+const p10=T.G.P;
+p10.rl.L=p10.rl.R=p10.reload=0;
+T.useArmButton('L');
+ok(p10.arm==='L' && p10.aiming && !T.G.shots.length, '左腕を選んで照準に入る');
+T.useArmButton('R');
+ok(p10.arm==='R' && p10.aiming && !T.G.shots.length, '照準中の武器切り替えでは発射しない');
+T.useArmButton('R'); const fired=T.G.shots.length;
+T.useArmButton('R');
+ok(fired===T.WEAP[p10.wR].shots && T.G.shots.every(s=>s.w===p10.wR) && T.G.shots.length===fired && !p10.aiming, '同じ腕で発射し、装填中は再発射しない');
+T.useArmButton('L'); T.useArmButton('R');
+ok(p10.arm==='L' && p10.aiming && T.G.shots.length===fired, '反対の腕は発射可能で、装填中の腕を押しても照準は続く');
 
 console.log(failed ? `\n${failed}件 失敗` : '\nすべて成功');
 process.exit(failed ? 1 : 0);
