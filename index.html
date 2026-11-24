@@ -81,6 +81,8 @@ header p{margin:0;font-size:14px;opacity:.75}
 .mapsvg{background:#2a4f5a;border:3px solid var(--edge);border-radius:6px;width:100%;height:auto;max-height:620px;display:block}
 .ed{stroke:#cfc59a;stroke-width:.8;stroke-dasharray:2 1.6;opacity:.45}
 .ed.on{opacity:1;stroke-dasharray:none;stroke:#f0d890}
+.op-actions{display:grid;gap:8px}
+.op-actions .btn{min-height:44px}
 .nd{cursor:pointer}
 .nd circle{stroke:#11140b;stroke-width:.8}
 .nd text{font:700 4.6px "Zen Kaku Gothic New",sans-serif;fill:#ebe5cd;paint-order:stroke;stroke:#11140b;stroke-width:1.2px}
@@ -211,20 +213,26 @@ const NODES=[
  {n:'東村',prop:'pass',x:60,y:47,to:[14],foes:['heavy','heavy','light'],pay:420,sky:3},
  {n:'国頭',prop:'pass',x:60,y:27,to:[15],foes:['heavy','art','heavy'],pay:480,sky:1},
  {n:'辺戸岬',prop:'fort',x:66,y:11,to:[],foes:['heavy','bossA','final'],pay:1000,sky:3,final:1,boss:1}];
+const KADENA=6,SHURI=3,URASOE=4,GINOWAN=5,REINFORCEMENT_TURN=5;
+const APPROACH={
+ [SHURI]:{name:'首里の丘陵路',distance:220},
+ [URASOE]:{name:'浦添の海岸路',distance:1300}
+};
 const SKY=[['#394348','#9a7a62','#cdb391'],['#4b5258','#7c8388','#abaeac'],['#22262e','#5a4a52','#a06c52'],['#0d1117','#1c2430','#34404c']];
 const GRD=[['#7a7452','#8f8462','#4b4532'],['#6c7058','#828468','#474838'],['#6e5a46','#8a6e52','#43362a'],['#2b322d','#384036','#1a1f1b']];
 const SEA=['#4a666c','#56676e','#3a4660','#16223a'];
 /* ================= セーブ ================= */
 let S=null;
 const KEY='kokyaku-v2';
+const newOperation=()=>({turn:0,scouted:[],supplied:false});
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(_){}}
 const CREW={kaji:['比嘉','宮城','新垣'],aka:['砂川','友利','平良'],gaju:['下地','池間','垣花']};
 const ROLES=[['drv','操縦手'],['gun','砲手'],['ldr','装填手']],CMAX=5,cNeed=l=>l*80;
 const mkCrew=()=>({drv:{lv:1,exp:0},gun:{lv:1,exp:0},ldr:{lv:1,exp:0}});
-function norm(s){s.runs=s.runs||1;if(!s.map2){s.cleared=[];s.at=-1;s.done=false;s.map2=1}s.roster.forEach(m=>{if(!m.crew)m.crew=mkCrew();if(!m.cn)m.cn=(CREW[m.id]||['名無','名無','名無']).slice();if(!m.wL)m.wL=BASE[m.id].wL;if(!m.wR)m.wR=BASE[m.id].wR;m.sq.forEach(q=>{q.lv=q.lv||1;q.exp=q.exp||0})});return s}
+function norm(s){s.operation=s.operation||newOperation();s.runs=s.runs||1;if(!s.map2){s.cleared=[];s.at=-1;s.done=false;s.map2=1}s.roster.forEach(m=>{if(!m.crew)m.crew=mkCrew();if(!m.cn)m.cn=(CREW[m.id]||['名無','名無','名無']).slice();if(!m.wL)m.wL=BASE[m.id].wL;if(!m.wR)m.wR=BASE[m.id].wR;m.sq.forEach(q=>{q.lv=q.lv||1;q.exp=q.exp||0})});return s}
 const crewTxt=m=>`操${m.crew.drv.lv}・砲${m.crew.gun.lv}・装${m.crew.ldr.lv}`;
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.roster)return norm(s)}catch(_){}return null}
-function newGame(){S={funds:300,at:-1,cleared:[],done:false,runs:1,map2:1,roster:['kaji','aka','gaju'].map(id=>({id,hp:0,crew:mkCrew(),cn:CREW[id].slice(),wL:BASE[id].wL,wR:BASE[id].wR,up:{armor:0,gun:0,sight:0,legs:0,loader:0},sq:[]}))};
+function newGame(){S={funds:300,at:-1,cleared:[],done:false,runs:1,map2:1,operation:newOperation(),roster:['kaji','aka','gaju'].map(id=>({id,hp:0,crew:mkCrew(),cn:CREW[id].slice(),wL:BASE[id].wL,wR:BASE[id].wR,up:{armor:0,gun:0,sight:0,legs:0,loader:0},sq:[]}))};
  S.roster[0].sq=[{t:'assault',men:MEN,lv:1,exp:0}];S.roster[1].sq=[{t:'smoke',men:MEN,lv:1,exp:0}];S.roster[2].sq=[{t:'repair',men:MEN,lv:1,exp:0}];S.roster.forEach(m=>m.hp=stats(m).max);save()}
 function stats(m){const b=BASE[m.id],u=m.up,c=m.crew||mkCrew(),g=c.gun.lv-1,d=c.drv.lv-1,l=c.ldr.lv-1,wL=m.wL||b.wL,wR=m.wR||b.wR,rk=k=>WEAP[k].rl*(1-.1*u.loader)*(1-.06*l);
  return{...b,pilot:(m.cn||CREW.kaji)[0],wL,wR,rmx:{L:rk(wL),R:rk(wR)},reload:rk(wR),max:Math.round(b.hp*(1+.15*u.armor)),dmg:b.dmg*(1+.12*u.gun),aimSpd:b.aimSpd*(1+.15*u.sight)*(1+.08*g),capB:3*u.sight+3*g,swayMul:1-.07*g,evade:.04*d+(b.evB||0),speed:b.speed*(1+.15*u.legs)*(1+.06*d)}}
@@ -251,17 +259,58 @@ function title(){go('title');demo();const has=load();
 $('tOver').addEventListener('click',e=>{const a=e.target.closest('[data-a]');if(!a)return;audio();sfx('ui');if(a.dataset.a==='new')newGame();else S=load();mapView()});
 /* ================= 作戦地図 ================= */
 let SEL=null;
+function inKadenaOperation(i){
+ return (i===SHURI||i===URASOE||i===GINOWAN||i===KADENA)&&avail().includes(i);
+}
+function approachFor(i){
+ if(APPROACH[i])return APPROACH[i];
+ return APPROACH[S.cleared.includes(URASOE)?URASOE:SHURI];
+}
+const canSupply=()=>!S.operation.supplied&&S.roster.some(m=>m.hp<stats(m).max||m.sq.some(q=>q.men<MEN));
+function prepareOperation(i,action){
+ if(!inKadenaOperation(i))return false;
+ const op=S.operation;
+ if(action==='scout'&&!op.scouted.includes(i))op.scouted.push(i);
+ else if(action==='supply'&&canSupply()){
+  for(const m of S.roster){
+   const max=stats(m).max;
+   m.hp=Math.min(max,m.hp+Math.round(max*.25));
+   for(const q of m.sq)q.men=Math.max(q.men,Math.min(MEN,q.men+2));
+  }
+  op.supplied=true;
+ }else return false;
+ op.turn++;save();return true;
+}
+function operationPanel(i){
+ const op=S.operation,route=approachFor(i),left=Math.max(0,REINFORCEMENT_TURN-op.turn);
+ const scouted=op.scouted.includes(i);
+ const foes=NODES[i].foes.map(t=>{
+  const f=FOES[t],squads=f.sq.map(q=>SQ[q.t][0]).join('・');
+  return `<li>${f.n} ／ ${squads||'随伴分隊なし'}</li>`;
+ }).join('');
+ const clock=left===0?'嘉手納に敵増援が到着':left===1?'次の行動で嘉手納に敵増援が到着':`嘉手納の敵増援まであと ${left} ターン`;
+ return `<h3>${NODES[i].n}<small>報酬 ${NODES[i].pay} 円</small></h3>
+ <p class="stat" role="status">作戦 ${op.turn+1}ターン目 ・ ${clock}</p>
+ <p class="note">${route.name} ／ 戦闘開始距離 ${route.distance}m</p>
+ ${scouted?`<h4>偵察報告</h4><ul class="lst">${foes}${i===KADENA&&!left?'<li>増援：'+FOES.light.n+'</li>':''}</ul>`:'<p class="note">偵察で守備隊の機体と随伴分隊を確認できる。</p>'}
+ <div class="op-actions">
+ <button class="btn go" data-a="sortie">${NODES[i].n}へ進軍（1ターン）</button>
+ <button class="btn" data-a="scout" ${scouted?'disabled':''}>${scouted?'偵察済み':'偵察する（1ターン）'}</button>
+ <button class="btn" data-a="supply" ${canSupply()?'':'disabled'}>${op.supplied?'補給済み':canSupply()?'補給する（1ターン）':'補給不要'}</button>
+ </div>
+ <p class="note">補給はこの作戦で1回。全機の最大装甲の25%を回復し、各分隊に最大2名を補充する。</p>`;
+}
 const ISLAND='M37 163 L30 154 L27 146 L26 138 L28 131 L30 124 L32 116 L31 110 L27 104 L29 99 L34 95 L37 90 L39 82 L41 76 L37 73 L30 70 L24 64 L25 57 L31 54 L38 57 L44 55 L47 48 L52 38 L55 28 L60 17 L64 7 L70 8 L71 15 L69 24 L67 34 L64 44 L61 54 L57 63 L54 72 L52 82 L51 90 L53 96 L60 101 L65 106 L60 110 L53 110 L49 115 L48 123 L47 131 L53 135 L52 142 L47 149 L44 156 L41 161 Z';
 function rosterMini(){return S.roster.map(m=>{const s=stats(m);return `<div class="row"><span>${s.n}<small class="note"> ${crewTxt(m)}</small></span><b>${m.hp<=0?'<span style="color:var(--red)">大破</span>':Math.ceil(m.hp)+' / '+s.max}</b></div><div class="bar"><i style="width:${m.hp/s.max*100}%;background:${m.hp/s.max<.35?'var(--red)':'var(--hp)'}"></i></div>`}).join('')}
 function mapView(){go('map');const av=avail(),pk=pickable();if(SEL==null||!pk.includes(SEL))SEL=av[0]??S.at;
  const ed=NODES.flatMap((n,i)=>n.to.map(t=>{const m=NODES[t],on=S.cleared.includes(i)&&(S.cleared.includes(t)||av.includes(t));return `<line class="ed ${on?'on':''}" x1="${n.x}" y1="${n.y}" x2="${m.x}" y2="${m.y}"/>`})).join('');
  const nd=NODES.map((n,i)=>{const c=S.cleared.includes(i),a=av.includes(i);return `<g class="nd ${a?'av':c?'re':'lock'} ${SEL===i?'sel':''}" data-n="${i}">${n.boss?`<circle cx="${n.x}" cy="${n.y}" r="${n.final?7.4:5.8}" fill="none" stroke="#ffcf4a" stroke-width="${n.final?1.2:.9}" stroke-dasharray="${n.final?'':'1.4 1'}"/>`:''}<circle cx="${n.x}" cy="${n.y}" r="${n.final?5.6:n.boss?4.6:3.6}" fill="${c?'#86965a':a?'#d9452b':'#5a4a40'}"/>${n.boss&&!c?`<text x="${n.x}" y="${n.y+1.5}" text-anchor="middle" style="font-size:${n.final?4.6:3.8}px;fill:#ffcf4a;stroke:none">★</text>`:''}${c?`<path d="M${n.x-2} ${n.y} l1.6 1.8 l3-3.6" stroke="#fff" stroke-width="1" fill="none"/>`:''}<text x="${n.x+(n.x>50||n.lr?6.5:-6.5)}" y="${n.y+1.6}" text-anchor="${n.x>50||n.lr?'start':'end'}">${n.n}</text></g>`}).join('');
  const n=SEL!=null?NODES[SEL]:null;
- const rep=n&&S.cleared.includes(SEL);const info=n?`<h3>${n.n}<small>${rep?'制圧済み・再戦の報酬 '+Math.round(n.pay*.5)+' 円':n.final?'最終拠点':'報酬 '+n.pay+' 円'}</small></h3><div class="foe">${n.foes.map(f=>`<span class="tag ${FOES[f].boss?'boss':''}">${FOES[f].final?'大ボス ':FOES[f].boss?'BOSS ':''}${FOES[f].n}</span>`).join('')}</div><p class="note">${n.foes.length}機と順番に一騎打ち。どの機体を出すかは毎回選べる。${n.final?'大要塞テンカを倒せば沖縄本島は解放される。':n.boss?'ボスが待ち構えている。修理と換装を済ませてから行こう。':''}</p><button class="btn go" data-a="sortie" style="width:100%">${rep?n.n+'で再戦する':n.n+'へ出撃'}</button><p class="note" style="margin:6px 0 0">制圧済みの拠点(緑)は何度でも再戦できる。資金稼ぎと乗員の訓練に。</p>`:`<h3>拠点を選んで</h3>`;
+ const rep=n&&S.cleared.includes(SEL);const info=inKadenaOperation(SEL)?operationPanel(SEL):n?`<h3>${n.n}<small>${rep?'制圧済み・再戦の報酬 '+Math.round(n.pay*.5)+' 円':n.final?'最終拠点':'報酬 '+n.pay+' 円'}</small></h3><div class="foe">${n.foes.map(f=>`<span class="tag ${FOES[f].boss?'boss':''}">${FOES[f].final?'大ボス ':FOES[f].boss?'BOSS ':''}${FOES[f].n}</span>`).join('')}</div><p class="note">${n.foes.length}機と順番に一騎打ち。どの機体を出すかは毎回選べる。${n.final?'大要塞テンカを倒せば沖縄本島は解放される。':n.boss?'ボスが待ち構えている。修理と換装を済ませてから行こう。':''}</p><button class="btn go" data-a="sortie" style="width:100%">${rep?n.n+'で再戦する':n.n+'へ出撃'}</button><p class="note" style="margin:6px 0 0">制圧済みの拠点(緑)は何度でも再戦できる。資金稼ぎと乗員の訓練に。</p>`:`<h3>拠点を選んで</h3>`;
  $('map').innerHTML=`<div class="bar2"><h2>作戦地図</h2><span class="funds">${S.funds} 円</span></div><div class="mapgrid"><svg class="mapsvg" viewBox="0 0 100 170" role="img" aria-label="沖縄本島の作戦地図"><path d="${ISLAND}" fill="#7f8a52" stroke="#d8c38c" stroke-width=".8" stroke-linejoin="round"/><text x="74" y="128" font-size="4" fill="#9fc4c8" font-family="Zen Kaku Gothic New">太平洋</text><text x="4" y="86" font-size="4" fill="#9fc4c8" font-family="Zen Kaku Gothic New">東シナ海</text><circle cx="12" cy="140" r="1.6" fill="#6f7a4a"/><circle cx="9" cy="143" r="1.1" fill="#6f7a4a"/><circle cx="14" cy="145" r="1.2" fill="#6f7a4a"/><circle cx="18" cy="62" r="1.6" fill="#6f7a4a"/><path d="${ISLAND}" fill="none" stroke="#3d4729" stroke-width=".3" transform="translate(1 1.4)" opacity=".5"/>${ed}${nd}<text x="6" y="10" font-size="5" fill="#cfe0e0" font-family="Dela Gothic One">北</text><path d="M8 12 l0 10" stroke="#cfe0e0" stroke-width=".6"/></svg>
  <div style="display:flex;flex-direction:column;gap:10px"><div class="box">${info}</div><div class="box"><h3>部隊<small>損傷は持ち越し</small></h3>${rosterMini()}<button class="btn" data-a="hangar" style="width:100%;margin-top:6px">格納庫(修理・機体・武器・分隊)</button></div><button class="btn" data-a="title">題字に戻る</button></div></div>`}
 $('map').addEventListener('click',e=>{const g=e.target.closest('.nd');if(g){const i=+g.dataset.n;if(pickable().includes(i)){SEL=i;sfx('ui');mapView()}return}
- const a=e.target.closest('[data-a]');if(!a)return;sfx('ui');const k=a.dataset.a;if(k==='sortie'&&SEL!=null)startStage(SEL);else if(k==='hangar')hangar();else if(k==='title')title()});
+ const a=e.target.closest('[data-a]');if(!a)return;sfx('ui');const k=a.dataset.a;if(k==='sortie'&&SEL!=null)startStage(SEL);else if(k==='scout'||k==='supply'){if(prepareOperation(SEL,k))mapView()}else if(k==='hangar')hangar();else if(k==='title')title()});
 /* ================= 格納庫 ================= */
 const repCost=m=>{const s=stats(m);return Math.ceil((s.max-m.hp)/5)+(m.hp<=0?80:0)};
 const trade=k=>Math.floor(k*.4),dif=c=>c>=0?`差額 ${c}円`:`${-c}円戻る`;
@@ -291,10 +340,19 @@ $('hangar').addEventListener('click',e=>{const a=e.target.closest('[data-a]');if
  sfx('clank');save();hangar();if(msg)$('hmsg').textContent=msg});
 /* ================= 拠点戦の流れ ================= */
 let BT=null;
-function startStage(i){BT={replay:S.cleared.includes(i),node:i,foes:NODES[i].foes.map(t=>({t,hp:FOES[t].hp,sq:FOES[t].sq.map(q=>({...q}))})),kills:0,ups:[],exp:0};pre()}
+function startStage(i){
+ const route=inKadenaOperation(i)?approachFor(i):null,types=[...NODES[i].foes];
+ if(route){
+  S.operation.turn++;
+  if(i===KADENA&&S.operation.turn>=REINFORCEMENT_TURN)types.splice(types.length-1,0,'light');
+  save();
+ }
+ BT={replay:S.cleared.includes(i),node:i,route,foes:types.map(t=>({t,hp:FOES[t].hp,sq:FOES[t].sq.map(q=>({...q}))})),kills:0,ups:[],exp:0};
+ pre();
+}
 function pre(){go('pre');const nd=NODES[BT.node],alive=BT.foes.filter(f=>f.hp>0),nx=alive[0],F=FOES[nx.t];
  $('pre').innerHTML=`<div class="bar2"><h2>${nd.n} ・ 出撃機を選ぶ</h2><span class="funds">${S.funds} 円</span></div>
- <div class="box"><h3>次の敵：${F.final?'大ボス ':F.boss?'BOSS ':''}${F.n}<small>装甲 ${Math.ceil(nx.hp)} / ${F.hp}</small></h3><div class="foe">${BT.foes.map(f=>`<span class="tag ${f.hp<=0?'dead':f===nx?'next':''} ${FOES[f.t].boss?'boss':''}">${FOES[f.t].final?'大ボス ':FOES[f.t].boss?'BOSS ':''}${FOES[f.t].n}${f.hp>0&&f.hp<FOES[f.t].hp?' (損傷)':''}</span>`).join('')}</div><p class="note">${F.note?F.note:F.art?'遠距離ほど正確な砲撃型。懐に飛び込め。':F.dodge>1?'すばしっこい。照準を溜めるとかわされやすい。':F.sq.length?'随伴歩兵が肉薄攻撃を仕掛けてくる。':'標準的な相手。'}</p></div>
+ <div class="box"><h3>次の敵：${F.final?'大ボス ':F.boss?'BOSS ':''}${F.n}<small>装甲 ${Math.ceil(nx.hp)} / ${F.hp}</small></h3><div class="foe">${BT.foes.map(f=>`<span class="tag ${f.hp<=0?'dead':f===nx?'next':''} ${FOES[f.t].boss?'boss':''}">${FOES[f.t].final?'大ボス ':FOES[f.t].boss?'BOSS ':''}${FOES[f.t].n}${f.hp>0&&f.hp<FOES[f.t].hp?' (損傷)':''}</span>`).join('')}</div>${BT.route?`<p class="note">${BT.route.name} ／ 戦闘開始距離 ${BT.route.distance}m</p>`:''}<p class="note">${F.note?F.note:F.art?'遠距離ほど正確な砲撃型。懐に飛び込め。':F.dodge>1?'すばしっこい。照準を溜めるとかわされやすい。':F.sq.length?'随伴歩兵が肉薄攻撃を仕掛けてくる。':'標準的な相手。'}</p></div>
  <div class="cards" style="margin-top:10px">${S.roster.map((m,i)=>{const s=stats(m);return `<button class="mc pick" data-i="${i}" ${m.hp<=0?'disabled':''}><h3>${s.n}<small>${s.type}・${crewTxt(m)}</small></h3><div class="row"><span>装甲</span><b>${m.hp<=0?'大破':Math.ceil(m.hp)+' / '+s.max}</b></div><div class="bar"><i style="width:${m.hp/s.max*100}%;background:${m.hp/s.max<.35?'var(--red)':'var(--hp)'}"></i></div><span class="note">左 ${WEAP[m.wL].n}・右 ${WEAP[m.wR].n}</span><span class="note">分隊：${m.sq.length?m.sq.map(q=>SQ[q.t][0]+'★'+(q.lv||1)+' '+q.men+'名').join('・'):'なし'}</span></button>`}).join('')}</div>
  <div class="row2" style="margin-top:12px"><button class="btn" data-a="retreat">撤退する(資金 -100 円)</button></div>`}
 $('pre').addEventListener('click',e=>{const p=e.target.closest('.pick');if(p&&!p.disabled){sfx('ui');startDuel(+p.dataset.i);return}const a=e.target.closest('[data-a]');if(a&&a.dataset.a==='retreat')stageFail(true)});
@@ -320,6 +378,10 @@ function mkUnit(src,side,def,persist){const u={side,x:side<0?200:2300,hp:persist
 function startDuel(ri){const m=S.roster[ri],s=stats(m),f=BT.foes.find(x=>x.hp>0),F=FOES[f.t];
  G={t:0,run:true,over:false,paused:false,mg:0,prop:NODES[BT.node].prop,freeze:0,slow:0,shake:0,flashA:0,banner:null,sky:NODES[BT.node].sky,ri,fo:f,ups:[],shots:[],parts:[],texts:[],decals:[],log:[],hits:0,
   P:mkUnit(m,-1,s,m),E:mkUnit(f,1,F,f)};
+ if(BT.route){
+  G.P.x=1250-BT.route.distance/2;
+  G.E.x=1250+BT.route.distance/2;
+ }
  CAM={x:1250,z:W/2750};go('battle');buildSq();if(F.boss){banner(F.final?'大ボス出現':'BOSS',F.n,F.final?'#ff6a4a':'#ffcf4a');G.shake=10;sfx('heavy')}say(`${s.n} 出撃! 相手は${F.n}。`,'w');logDirty=true}
 function demo(){const m={id:'kaji',hp:900,wL:'auto',wR:'cannon',sq:[{t:'assault',men:6}],up:{armor:0,gun:0,sight:0,legs:0,loader:0}};
  G={t:0,run:false,over:false,demo:true,prop:'town',paused:false,freeze:0,slow:0,shake:0,flashA:0,banner:null,sky:2,shots:[],parts:[],texts:[],decals:[],log:[],P:mkUnit(m,-1,stats(m),{hp:900,sq:[{t:'assault',men:6}]}),E:mkUnit(null,1,FOES.heavy,{hp:950,sq:[{t:'assault',men:6}]})};

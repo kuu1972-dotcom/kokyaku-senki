@@ -11,7 +11,7 @@ let js = scripts[scripts.length - 1][1].trimEnd();
 // スクリプト全体は { ... } のブロック。最後の } の直前にテスト用の出口を差し込む
 js = js.slice(0, -1) + `;globalThis.T={get S(){return S},get G(){return G},get BT(){return BT},
  startStage,startDuel,step,draw,hud,act,afterDuel,mapView,hangar,pre,newGame,flee,setArm,toggleEv,avail,stats,
- scopeGeom,hitTest,retPt,useSquad,scopeStep,get WEAP(){return WEAP},get BASE(){return BASE},get NODES(){return NODES},get mode(){return mode}}}`;
+ scopeGeom,hitTest,retPt,useSquad,scopeStep,prepareOperation,operationPanel,norm,get WEAP(){return WEAP},get BASE(){return BASE},get NODES(){return NODES},get mode(){return mode}}}`;
 
 // ---- ブラウザの代わり(何もしない偽物) ----
 const ctx = new Proxy({}, {
@@ -142,6 +142,50 @@ boss.x = scout.x + 1200; scout.reload = scout.rl.R = 0;
 T.act(); T.useSquad(scout, 1); scout.aim = 65;
 T.step(0.1);
 ok(boss.smoke > 0, 'ライデンは観測支援による狙撃に煙幕で対抗する');
+
+// 9) 那覇から嘉手納までの作戦ターンと進軍路
+const shuri = T.NODES.findIndex(n => n.n === '首里');
+const urasoe = T.NODES.findIndex(n => n.n === '浦添');
+const ginowan = T.NODES.findIndex(n => n.n === '宜野湾');
+function reachNaha() {
+  T.newGame();
+  T.S.at = T.NODES.findIndex(n => n.n === '那覇');
+  T.S.cleared = [0, 1, T.S.at];
+}
+function clearCurrentStage() {
+  for (const enemy of T.BT.foes) enemy.hp = 0;
+  T.afterDuel();
+}
+reachNaha();
+T.startStage(shuri); T.startDuel(0);
+ok(T.G.E.x - T.G.P.x === 220, '首里経由では220mで戦闘開始');
+clearCurrentStage();
+T.startStage(ginowan); clearCurrentStage();
+T.startStage(kadena);
+ok(T.S.operation.turn === 3 && T.BT.foes.length === 3, '進軍だけなら増援到着前に嘉手納へ攻め込める');
+
+reachNaha();
+delete T.S.operation;
+T.S.roster[0].crew.gun.lv = 3;
+T.norm(T.S);
+ok(T.S.operation.turn === 0 && T.S.roster[0].crew.gun.lv === 3, '旧セーブに作戦を追加し、乗員の熟練を維持');
+T.startStage(urasoe); clearCurrentStage();
+T.startStage(ginowan); clearCurrentStage();
+ok(!T.operationPanel(kadena).includes('煙幕分隊') && T.prepareOperation(kadena, 'scout') &&
+   !T.prepareOperation(kadena, 'scout') && T.operationPanel(kadena).includes('煙幕分隊'),
+   '偵察で敵分隊を公開し、重複偵察はターンを消費しない');
+const damaged = T.S.roster[0];
+damaged.hp = 30; damaged.sq[0].men = 3;
+ok(T.prepareOperation(kadena, 'supply') && !T.prepareOperation(kadena, 'supply') &&
+   damaged.hp === 30 + Math.round(T.stats(damaged).max * .25) && damaged.sq[0].men === 5,
+   '補給は1回だけ装甲と分隊を回復');
+ok(JSON.parse(localStorage.getItem('kokyaku-v2')).operation.turn === 4, '作戦ターンはセーブされる');
+T.startStage(kadena); T.startDuel(0);
+ok(T.S.operation.turn === 5 && T.BT.foes.length === 4 && T.BT.foes.at(-2).t === 'light' &&
+   T.G.E.x - T.G.P.x === 1300, '浦添経由の開始距離を維持し、5ターン目は嘉手納に増援が出る');
+clearCurrentStage();
+T.startStage(kadena);
+ok(T.S.operation.turn === 5 && T.BT.replay && !T.BT.route && T.BT.foes.length === 3, '再戦は作戦のターンや増援の影響を受けない');
 
 console.log(failed ? `\n${failed}件 失敗` : '\nすべて成功');
 process.exit(failed ? 1 : 0);
