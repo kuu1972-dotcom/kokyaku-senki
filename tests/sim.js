@@ -10,7 +10,7 @@ const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
 let js = scripts[scripts.length - 1][1].trimEnd();
 // スクリプト全体は { ... } のブロック。最後の } の直前にテスト用の出口を差し込む
 js = js.slice(0, -1) + `;globalThis.T={get S(){return S},get G(){return G},get BT(){return BT},
- startStage,startDuel,step,draw,hud,act,afterDuel,mapView,hangar,pre,newGame,flee,setArm,toggleEv,avail,stats,
+ startStage,startDuel,step,draw,hud,act,hit,afterDuel,mapView,hangar,pre,newGame,flee,setArm,toggleEv,avail,stats,
  scopeGeom,hitTest,retPt,get WEAP(){return WEAP},get BASE(){return BASE},get NODES(){return NODES},get mode(){return mode}}}`;
 
 // ---- ブラウザの代わり(何もしない偽物) ----
@@ -104,6 +104,18 @@ T.newGame(); const m = T.S.roster[2]; m.id = 'ishi'; m.wR = 'lcannon'; m.up = { 
 const fin = T.NODES.findIndex(n => n.final); T.startStage(fin); T.BT.foes.forEach((f, j) => { if (j < T.BT.foes.length - 1) f.hp = 0; });
 T.startDuel(2); T.G.E.hp = T.G.E.max * 0.45; T.step(DT);
 ok(!!T.G.E.enraged, '大ボスが装甲半分で暴走する');
+
+// 8) 撃破後の描画だけで連鎖爆発が進み、停止中には進まない
+T.newGame(); T.startStage(0); T.startDuel(0);
+const {P, E} = T.G;
+T.hit(P, E, 1, 'legs', false, null, 'auto');
+ok(!T.G.wreck && T.G.parts.some(p => p.k === 'ring' && p.y === 32 * E.size), '通常命中は被弾部位に衝撃波を出す');
+T.hit(P, E, E.hp, 'body', true, null, 'heavy'); T.step(0);
+T.draw(0); const atStart = T.G.wreck.next;
+for (let j = 0; j < 4; j++) T.draw(.025);
+const first = T.G.wreck.next;
+for (let j = 0; j < 6; j++) T.draw(.025);
+ok(!T.G.run && atStart === 0 && first === 1 && T.G.wreck.next === 2, '撃破後に二段階の追撃爆発を描画する');
 
 console.log(failed ? `\n${failed}件 失敗` : '\nすべて成功');
 process.exit(failed ? 1 : 0);
