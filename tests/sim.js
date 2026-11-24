@@ -117,5 +117,13 @@ const first = T.G.wreck.next;
 for (let j = 0; j < 6; j++) T.draw(.025);
 ok(!T.G.run && atStart === 0 && first === 1 && T.G.wreck.next === 2, '撃破後に二段階の追撃爆発を描画する');
 
+// 9) 新しい装甲の各部で、照準の当たり判定を維持する
+T.newGame(); T.startStage(0); T.startDuel(0);
+T.G.E.phase = Math.PI / 2;
+T.G.lock = {lat:T.G.E.lat,off:0};
+const g = T.scopeGeom(), at = (x,y) => T.hitTest(g.ex+x*g.s,g.eg-(y+1.6)*g.s);
+ok(at(0,79)?.part === 'body' && at(-50,78)?.part === 'gun' && at(26,30)?.part === 'legs', '装甲・武装・脚部の判定を維持する');
+ok(at(0,100)?.crit && at(0,111)?.crit && !at(0,30) && !at(75,78), '弱点と機体外の判定を維持する');
+
 console.log(failed ? `\n${failed}件 失敗` : '\nすべて成功');
 process.exit(failed ? 1 : 0);
