@@ -186,11 +186,12 @@ const FOES={
  art:{n:'自走歩行砲 トドロキ',hp:650,dmg:1.35,aimSpd:24,reload:6,speed:24,pref:1950,dodge:0,art:1,col:['#7a6a52','#54493a','#a8977a'],size:1,hull:'heavy',wL:'how',wR:'how',sq:[]},
  boss:{boss:1,note:'名護を守る指揮型。噴進砲と長砲身で攻守に隙がない。',n:'指揮型 クロガネ',hp:1600,dmg:1.2,aimSpd:34,reload:4.2,speed:36,pref:1050,dodge:.6,col:['#3e3f44','#26272b','#6a6c74'],size:1.22,hull:'wedge',wL:'rocket',wR:'lcannon',sq:[{t:'assault',men:7},{t:'repair',men:6}]},
  bossA:{boss:1,note:'那覇港の守護者。両腕のガトリングで弾幕を張る。すばしっこさは無いが手数が多い。',n:'港湾守備型 ガンテツ',hp:1150,dmg:1.05,aimSpd:40,reload:3.2,speed:40,pref:800,dodge:.4,col:['#4a5446','#2e352c','#7c8a74'],size:1.25,hull:'heavy',wL:'auto',wR:'auto',sq:[{t:'assault',men:7}]},
- bossB:{boss:1,art:1,note:'嘉手納の移動砲台。遠いほど正確な榴弾砲2門。懐に飛び込め。',n:'移動砲台 ライデン',hp:1550,dmg:1.5,aimSpd:26,reload:5.4,speed:22,pref:2100,dodge:0,col:['#6e6248','#4a4130','#a2916e'],size:1.32,hull:'heavy',wL:'how',wR:'how',sq:[{t:'repair',men:6}]},
+ bossB:{boss:1,art:1,note:'嘉手納の移動砲台。遠いほど正確な榴弾砲2門。観測支援には煙幕で対抗する。',n:'移動砲台 ライデン',hp:1550,dmg:1.5,aimSpd:26,reload:5.4,speed:22,pref:2100,dodge:0,col:['#6e6248','#4a4130','#a2916e'],size:1.32,hull:'heavy',wL:'how',wR:'how',sq:[{t:'repair',men:6},{t:'smoke',men:6}]},
  final:{boss:1,final:1,note:'辺戸岬の大要塞。装甲が厚く、半分まで削ると暴走して攻撃が激しくなる。',n:'大要塞 テンカ',hp:3200,dmg:1.4,aimSpd:32,reload:4.2,speed:24,pref:1200,dodge:.2,col:['#3a2e2a','#221a18','#7a5a4a'],size:1.6,hull:'heavy',wL:'rocket',wR:'lcannon',sq:[{t:'assault',men:8},{t:'repair',men:8}]}};
 const UPG={armor:['追加装甲','最大装甲 +15%'],gun:['火器強化','両腕の威力 +12%'],sight:['照準器','照準速度 +15%'],legs:['脚部強化','移動 +15%'],loader:['自動装填機','装填 -10%']};
 const UCOST=[120,220,360];
-const SQ={assault:['突撃分隊','230m以内で肉薄、脚を壊す',14],repair:['整備分隊','止まっている間に装甲修理',20],smoke:['煙幕分隊','8秒間、敵の命中を大幅に下げる',18],rocket:['対戦車噴進班','600m以内で噴進弾(1戦1回)',999]};
+const OBS_MIN=700,OBS_MAX=1800,OBS_DURATION=8;
+const SQ={assault:['突撃分隊','230m以内で肉薄、脚を壊す',14],repair:['整備分隊','止まっている間に装甲修理',20],smoke:['煙幕分隊','8秒間、敵の命中を大幅に下げる',18],rocket:['対戦車噴進班','600m以内で噴進弾(1戦1回)',999],observe:['観測分隊',`${OBS_MIN}〜${OBS_MAX}mで照準を支援`,22]};
 const SQCOST=90,MEN=6;
 const PART={body:['胴体',1],legs:['脚部',.82],gun:['腕の火器',.68]};
 const NODES=[
@@ -386,17 +387,32 @@ function hit(u,t,dmg,part,crit,lab,fx){fx=fx||'std';const fm={heavy:1.4,how:1.6,
  say(`${t.name.split(' ')[0]}に命中! ${pl} ${dmg}${t.flee?'(背面)':''}`,cls(u))}
 function miss(t,fx){if(t===G.P&&G.P.src)gainCrew(G.P.src,'drv',t.dir?22:8);const mx=t.x+t.side*rnd(25,70);if(fx==='how'){boom(mx,2,1.4,'#c8a878');G.parts.push({k:'ring',x:mx,y:3,vx:0,vy:0,r:6,l:.5,m:.5,c:'#e8d4a8'});G.shake=Math.max(G.shake,6)}else if(fx==='auto'){for(let i=0;i<3;i++)G.parts.push({k:'smoke',x:mx+rnd(-14,14),y:2,vx:0,vy:rnd(6,14),r:rnd(3,5),l:.8,m:.8,c:'#b8a57a'})}else if(fx==='flame'){for(let i=0;i<6;i++)G.parts.push({k:'fire',x:mx+rnd(-12,12),y:rnd(2,10),vx:0,vy:10,r:rnd(5,9),l:.7,m:.7})}else if(fx==='snipe'){G.parts.push({k:'smoke',x:mx,y:2,vx:0,vy:10,r:4,l:.7,m:.7,c:'#c8b88a'})}else{boom(mx,2,.6,'#d8c38c');G.shake=Math.max(G.shake,3)}sfx('miss');pop(t,'外れ','#ebe5cd');say('外れ!','w')}
 function killMen(u,n){let k=0;for(let i=0;i<n;i++){const al=u.squads.filter(q=>q.men>0&&q.busy<=0);if(!al.length)break;al[Math.floor(Math.random()*al.length)].men--;k++}return k}
+const inObservationRange=d=>d>=OBS_MIN&&d<=OBS_MAX;
+const canObserve=u=>!u.flee&&foe(u).smoke<=0&&inObservationRange(dist());
+const observationTime=q=>q.t==='observe'?Math.max(0,q.cd-SQ.observe[2]+OBS_DURATION):0;
+// 観測分隊を複数雇っても、同時に使う補正は一番強いものだけ。
+function observation(u){
+ if(!canObserve(u))return 0;
+ return u.squads.reduce((best,q)=>observationTime(q)>0&&q.men>0?Math.max(best,1+.05*((q.lv||1)-1)):best,0);
+}
+const playerAimRate=u=>14*u.aimSpd/34*curW(u).rate*(1+.35*observation(u));
 function useSquad(u,i){const q=u.squads[i];if(!q||!G.run||G.paused||q.men<=0||q.cd>0||q.busy>0||u.hp<=0)return;const d=dist(),nm=SQ[q.t][0],ql=q.lv||1;
  if(q.t==='assault'){if(d>230){if(u.side<0)say('肉薄は230m以内で!','w');return}q.cd=SQ.assault[2];q.busy=2.4;say(`${nm} 突撃!`,cls(u))}
  else if(q.t==='repair'){if(u.hp>=u.max||u.busyKind)return;q.cd=SQ.repair[2];u.busy=4.5;u.busyKind='repair';u.repSq=q;u.repairAmt=Math.round((40+q.men*14)*(1+.2*(ql-1)));say(`${nm} 修理中…止まってて!`,cls(u))}
  else if(q.t==='smoke'){q.cd=SQ.smoke[2];u.smoke=8+2*(ql-1);gainSq(u,q,30);say(`${nm} 煙幕展開!`,cls(u))}
  else if(q.t==='rocket'){if(q.used){return}if(d>600){if(u.side<0)say('噴進弾は600m以内で!','w');return}q.used=1;q.cd=999;G.shots.push({from:u,to:foe(u),t:0,T:d/260,rk:1,rq:q});sfx('rocket');say(`${nm} 発射!`,cls(u))}
+ else if(q.t==='observe'){
+  if(u.flee)return;
+  if(!inObservationRange(d)){say(`観測は${OBS_MIN}〜${OBS_MAX}mで!`,'w');return}
+  if(foe(u).smoke>0){say('煙幕で敵を観測できない','w');return}
+  q.cd=SQ.observe[2];gainSq(u,q,30);say(`${nm} 照準支援開始!`,cls(u));
+ }
  sfx('ui')}
 function assault(u,q){const t=foe(u);if(q.men<=0||t.hp<=0)return;if(dist()>270){say(`${SQ[q.t][0]} 目標を見失い後退`,'w');return}
  const ql=q.lv||1,ok=Math.random()<.3+q.men*.07+.08*(ql-1),lost=Math.min(q.men,Math.floor(rnd(1,4)));q.men-=lost;gainSq(u,q,ok?40:15);
  if(ok){const dmg=Math.round(rnd(90,150)*(.5+q.men/14)*(1+.15*(ql-1)));t.legs=clamp(t.legs-rnd(22,36),8,100);hit(u,t,dmg,'legs',false,'肉薄攻撃')}else say(`肉薄失敗… (損失${lost}名)`,'w')}
 function ai(dt){const e=G.E,p=G.P,d=dist();if(e.hp<=0||p.hp<=0)return;
- e.squads.forEach((q,i)=>{if(q.t==='assault'&&d<210&&Math.random()<dt*1.2)useSquad(e,i);if(q.t==='repair'&&e.hp<e.max*.45&&!e.aiming&&e.reload>2)useSquad(e,i)});
+ e.squads.forEach((q,i)=>{if(q.t==='assault'&&d<210&&Math.random()<dt*1.2)useSquad(e,i);if(q.t==='repair'&&e.hp<e.max*.45&&!e.aiming&&e.reload>2)useSquad(e,i);if(q.t==='smoke'&&p.aiming&&p.aim>=65&&observation(p)>0)useSquad(e,i)});
  if(e.busyKind){e.dir=0;return}
  if(e.dodgeT>0){e.dodgeT-=dt;if(e.dodgeT<=0)e.dir=0;return}
  if(p.aiming&&p.aim>60&&!e.aiming&&Math.random()<dt*e.dodge*.8){e.dir=e.x>FIELD-200?-1:e.x<p.x+400?1:Math.random()<.5?1:-1;e.latDir=Math.random()<.5?1:-1;e.dodgeT=rnd(.7,1.4);return}
@@ -415,7 +431,7 @@ function step(dt){G.t+=dt;ai(dt);scopeStep(dt);
   u.squads.forEach(q=>{q.cd=Math.max(0,q.cd-dt);if(q.busy>0){q.busy-=dt;if(q.busy<=0)assault(u,q)}});
   if(u.dir){if(u.aiming){u.aiming=false;u.aim=0}if(u.busyKind){u.busy=0;u.busyKind='';say('修理中断','w')}const sp=u.speed*(.25+.75*u.legs/100)*(u.flee?1.7:1);u.x+=u.dir*sp*dt*2.2;if(Math.random()<dt*6)G.parts.push({k:'smoke',x:u.x+rnd(-6,6),y:2,vx:rnd(-4,4),vy:rnd(3,8),r:rnd(3,6),l:.9,m:.9,c:'#b8a57a'});u.phase+=dt*sp*.1;u.lat+=u.latDir*sp*dt*(u.dodgeT>0?1:.35)}
   if(u.busyKind){u.busy-=dt;if(u.busy<=0){u.busyKind='';if(u.repSq)gainSq(u,u.repSq,35);u.hp=Math.min(u.max,u.hp+u.repairAmt);u.legs=Math.min(100,u.legs+20);u.gun=Math.min(100,u.gun+20);pop(u,`+${u.repairAmt}`,'#c7dc8f');say(`修理完了 +${u.repairAmt}`,cls(u))}}
-  if(u.aiming){u.aimT+=dt;u.aim=Math.min(cap(u),u.aim+(u.side<0?14*u.aimSpd/34*curW(u).rate:u.aimSpd*.5)*dt)}
+  if(u.aiming){u.aimT+=dt;u.aim=Math.min(cap(u),u.aim+(u.side<0?playerAimRate(u):u.aimSpd*.5)*dt)}
   if(Math.random()<dt*(u.dir?7:3.5)){const fc=u.side<0?(u.flee?-1:1):-1;G.parts.push({k:'smoke',x:u.x-fc*24*.98*u.size*SC()/Math.max(1e-4,CAM.z),y:124*u.size,vx:rnd(-2,2)-fc*(u.dir?6:0),vy:rnd(14,22),r:rnd(2.5,4.5),l:1.7,m:1.7,c:'#d9d7cf'})}
   if(u.hp<u.max*.5&&Math.random()<dt*(u.hp<u.max*.25?14:6))G.parts.push({k:'smoke',x:u.x+rnd(-10,10)*u.side,y:70*u.size,vx:rnd(-3,3),vy:rnd(14,26),r:rnd(5,9),l:1.8,m:1.8,c:'#26231c'});
   if(u.hp<u.max*.25&&Math.random()<dt*5)G.parts.push({k:'spark',x:u.x,y:55*u.size,vx:rnd(-30,30),vy:rnd(30,90),r:1,l:.4,m:.4,c:'#ffd070'})}
@@ -533,7 +549,7 @@ function scopeStep(dt){if(G.impact)G.impact.l-=dt;const P=G.P;if(!P.aiming||!G.l
  moveRet(((KEYS.r||0)-(KEYS.l||0))*sp*.6,((KEYS.d||0)-(KEYS.u||0))*sp*.6);
  G.lock.lat+=(G.E.lat-G.lock.lat)*Math.min(1,dt*2.2);
  G.jolt.x*=Math.max(0,1-dt*5);G.jolt.y*=Math.max(0,1-dt*5);
- const A=R*(.75*Math.pow(1-clamp(P.aim,0,100)/100,1.05)+.01)*P.swayMul*w.sway*(w.far?(dist()>1200?.75:1.3):1),t=G.t+(G.swPh||0);G.swA=A;
+ const A=R*(.75*Math.pow(1-clamp(P.aim,0,100)/100,1.05)+.01)*P.swayMul*w.sway*(1-.3*observation(P))*(w.far?(dist()>1200?.75:1.3):1),t=G.t+(G.swPh||0);G.swA=A;
  const sw=swayAt(t,A);G.sway={x:sw.x+G.jolt.x,y:sw.y+G.jolt.y}}
 function hitTest(px,py){const E=G.E,g=scopeGeom(),lx=(px-g.ex)/g.s,hu=(g.eg-py)/g.s,hh=hu-bobOf(E),inn=(a,b,c,d)=>lx>=a&&lx<=b&&hh>=c&&hh<=d;
  if(hu<0||E.hp<=0)return null;
@@ -678,11 +694,11 @@ function buildSq(){const q=G.P.squads;$('sq').innerHTML=q.length?q.map((x,i)=>`<
 let hudT=0;
 function hud(dt){if(mode!=='battle'||!G||G.demo)return;hudT-=dt;if(hudT>0)return;hudT=.08;const P=G.P;
  $('pU').innerHTML=card(P,crewTxt(P.src));$('eU').innerHTML=card(G.E,'北方軍');
- const c=cap(P);$('aimNum').textContent=P.aiming?Math.round(P.aim)+'%':'—';$('cancel').disabled=!P.aiming;$('aimBar').style.width=(P.aiming?P.aim:0)+'%';$('capMark').style.left=Math.min(c,99)+'%';$('capTxt').textContent=P.flee?'背を向けて逃走中':P.dir?'移動中は照準できない':`最大 ${Math.round(c)}% ・ 1秒で約${Math.round(14*P.aimSpd/34*curW(P).rate*TEMPO)}%`;
+ const c=cap(P);$('aimNum').textContent=P.aiming?Math.round(P.aim)+'%':'—';$('cancel').disabled=!P.aiming;$('aimBar').style.width=(P.aiming?P.aim:0)+'%';$('capMark').style.left=Math.min(c,99)+'%';$('capTxt').textContent=P.flee?'背を向けて逃走中':P.dir?'移動中は照準できない':`最大 ${Math.round(c)}% ・ 1秒で約${Math.round(playerAimRate(P)*TEMPO)}%`;
  for(const a of['L','R']){const w=WEAP[P['w'+a]];$('arm'+a).textContent=`${w.n} ${P.rl[a]>0?P.rl[a].toFixed(1)+'秒':'OK'}`;$('arms').querySelector(`[data-arm=${a}]`).classList.toggle('on',P.arm===a)}$('flee').disabled=!G.run||P.flee;const ev=$('evade');ev.classList.toggle('on',P.evMode);ev.textContent=`回避モード ${P.evMode?'ON':'OFF'}(回避力 ${agiG(P)})`;ev.disabled=!G.run||P.flee;$('flee').textContent=P.flee?'離脱中…':'戦闘離脱';
  const fb=$('fire');fb.disabled=!G.run||P.reload>0||P.flee;fb.textContent=P.reload>0?`装填中 ${P.reload.toFixed(1)}`:P.aiming?'撃て!':'狙撃';fb.classList.toggle('hot',P.aiming);
  $('dist').textContent=Math.round(dist())+'m';$('timer').textContent=Math.max(0,Math.ceil((LIMIT-G.t)/TEMPO));
- P.squads.forEach((q,i)=>{const s=$('sqs'+i);if(!s)return;s.textContent=`${q.men}名`+(q.men<=0?' 全滅':q.busy>0?' 突撃中':q.used?' 使用済み':q.cd>0?` 再使用 ${Math.ceil(q.cd)}秒`:` ・ ${SQ[q.t][1]}`);$('sqc'+i).style.width=(q.used?0:q.cd/SQ[q.t][2]*100)+'%';s.parentElement.disabled=!G.run||q.men<=0||q.cd>0});
+ P.squads.forEach((q,i)=>{const s=$('sqs'+i);if(!s)return;const obs=observationTime(q);s.textContent=`${q.men}名`+(q.men<=0?' 全滅':q.busy>0?' 突撃中':q.used?' 使用済み':obs>0?` ${canObserve(P)?'観測中':'観測中断'} ${Math.ceil(obs/TEMPO)}秒`:q.cd>0?` 再使用 ${Math.ceil(q.cd)}秒`:` ・ ${SQ[q.t][1]}`);$('sqc'+i).style.width=(q.used?0:q.cd/SQ[q.t][2]*100)+'%';s.parentElement.disabled=!G.run||q.men<=0||q.cd>0});
  if(logDirty){$('log').innerHTML=G.log.map(l=>`<li class="${l.c||''}">${l.m}</li>`).join('');logDirty=false}}
 /* ================= 入力 ================= */
 const playing=()=>mode==='battle'&&G&&G.run&&!G.paused;

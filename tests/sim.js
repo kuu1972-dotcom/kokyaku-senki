@@ -11,7 +11,7 @@ let js = scripts[scripts.length - 1][1].trimEnd();
 // スクリプト全体は { ... } のブロック。最後の } の直前にテスト用の出口を差し込む
 js = js.slice(0, -1) + `;globalThis.T={get S(){return S},get G(){return G},get BT(){return BT},
  startStage,startDuel,step,draw,hud,act,afterDuel,mapView,hangar,pre,newGame,flee,setArm,toggleEv,avail,stats,
- scopeGeom,hitTest,retPt,get WEAP(){return WEAP},get BASE(){return BASE},get NODES(){return NODES},get mode(){return mode}}}`;
+ scopeGeom,hitTest,retPt,useSquad,scopeStep,get WEAP(){return WEAP},get BASE(){return BASE},get NODES(){return NODES},get mode(){return mode}}}`;
 
 // ---- ブラウザの代わり(何もしない偽物) ----
 const ctx = new Proxy({}, {
@@ -104,6 +104,44 @@ T.newGame(); const m = T.S.roster[2]; m.id = 'ishi'; m.wR = 'lcannon'; m.up = { 
 const fin = T.NODES.findIndex(n => n.final); T.startStage(fin); T.BT.foes.forEach((f, j) => { if (j < T.BT.foes.length - 1) f.hp = 0; });
 T.startDuel(2); T.G.E.hp = T.G.E.max * 0.45; T.step(DT);
 ok(!!T.G.E.enraged, '大ボスが装甲半分で暴走する');
+
+// 8) 観測分隊は有効距離で照準を助け、煙幕と時間切れで効果が止まる
+T.newGame();
+const observer = {t:'observe',men:6,lv:1,exp:0};
+T.S.roster[0].sq.push(observer);
+T.startStage(0); T.startDuel(0);
+const {P, E} = T.G;
+T.useSquad(P, 1);
+ok(observer.cd === 0 && observer.exp === 0, '観測距離外では支援を開始できない');
+E.reload = 100; E.x = P.x + 700; P.reload = P.rl.R = 0; T.act();
+T.scopeStep(0);
+const normalSway = T.G.swA;
+T.useSquad(P, 1); T.useSquad(P, 1);
+T.scopeStep(0);
+ok(observer.cd > 0 && observer.exp === 30 && T.G.swA < normalSway, '観測開始で揺れが減り、再使用待ちが始まる');
+E.smoke = 1; T.scopeStep(0);
+ok(T.G.swA === normalSway, '敵の煙幕中は観測が効かない');
+E.smoke = 0; E.x = P.x + 1801; T.scopeStep(0);
+ok(T.G.swA === normalSway, '観測中でも距離外では支援が途切れる');
+E.x = P.x + 1000;
+const initialAim = P.aim;
+T.step(0.1);
+const supportedGain = P.aim - initialAim;
+T.step(8);
+P.aim = initialAim; T.scopeStep(0);
+ok(T.G.swA === normalSway && observer.cd > 0, '支援終了後も再使用待ちは続く');
+T.step(0.1);
+ok(supportedGain > P.aim - initialAim && P.aim > initialAim, '観測中は照準が速くなる');
+
+const kadena = T.NODES.findIndex(n => n.n === '嘉手納');
+T.startStage(kadena);
+for (const enemy of T.BT.foes) if (enemy.t !== 'bossB') enemy.hp = 0;
+T.startDuel(0);
+const {P: scout, E: boss} = T.G;
+boss.x = scout.x + 1200; scout.reload = scout.rl.R = 0;
+T.act(); T.useSquad(scout, 1); scout.aim = 65;
+T.step(0.1);
+ok(boss.smoke > 0, 'ライデンは観測支援による狙撃に煙幕で対抗する');
 
 console.log(failed ? `\n${failed}件 失敗` : '\nすべて成功');
 process.exit(failed ? 1 : 0);
