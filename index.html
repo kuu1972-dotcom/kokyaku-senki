@@ -286,7 +286,7 @@ function demo(){const m={id:'kaji',hp:900,sq:[{t:'assault',men:6}],up:{armor:0,g
 function say(m,c){if(!G)return;const t=Math.floor(G.t);G.log.unshift({m:`${t}s  ${m}`,c});G.log.length=Math.min(G.log.length,5);logDirty=true}
 const dist=()=>Math.abs(G.E.x-G.P.x),foe=u=>u===G.P?G.E:G.P,cls=u=>u.side<0?'p':'e';
 const wx=x=>W/2+(x-CAM.x)*CAM.z;
-const SC=()=>S0*clamp(CAM.z/(W/2750),.85,1.55);
+const SC=()=>S0*clamp(CAM.z/(W/2750)*.5,.42,1.2);
 function cap(u){const t=foe(u),d=dist();if(u.side<0){if(u.dir)return 0;return clamp(100*(.4+u.gun/166)*(t.smoke>0?.6:1),30,100)}let c=u.art?clamp(36+d/DS*.058,20,90):clamp(96-d/DS*.075,8,95);c=(c+u.capB)*(.4+u.gun/166)*(u.side>0?PART[u.part][1]:1);if(t.smoke>0)c*=u.side>0?.4:.6;if(t.dir&&u.side>0)c*=.72-(t.evade||0);if(u.dir)c=0;return clamp(c,0,96)}
 function startAim(u){if(u.reload>0||u.aiming||u.hp<=0)return;u.aiming=true;u.aim=u.side<0?30:0;u.aimT=0;u.thr=rnd(52,84);if(u.side<0){G.zoom=1;G.ret={x:W/2,y:H*.46};G.rel={x:rnd(-6,6),y:48};G.swPh=rnd(0,100);G.lock={lat:G.E.lat,off:0};G.impact=null;G.jolt={x:0,y:0};scopeStep(0)}if(u.side>0){const r=Math.random();u.part=r<.72?'body':r<.86?'legs':'gun'}}
 function fire(u){if(!u.aiming)return;const t=foe(u);let res;
@@ -491,7 +491,7 @@ function partsDraw(dt){const s=SC();G.parts=G.parts.filter(p=>{p.l-=dt;p.x+=p.vx
   else{ctx.globalAlpha=a*.55;ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(x,y,p.r*s,0,7);ctx.fill();ctx.globalAlpha=1}
   return p.l>0})}
 function draw(dt){if(!G)return;const T=G.demo?1:1;ctx.setTransform(1,0,0,1,0,0);const dpr=cv.width/W;ctx.setTransform(dpr,0,0,dpr,0,0);
- if(!G.demo){const cx=(G.P.x+G.E.x)/2,tz=clamp(W/(dist()+1400),W/2900,W/1550);CAM.x+=(cx-CAM.x)*Math.min(1,dt*2.5);CAM.z+=(tz-CAM.z)*Math.min(1,dt*1.8)}else{CAM.x=510+Math.sin(performance.now()/4000)*40;CAM.z=W/700;G.P.phase+=dt*.3;G.E.phase+=dt*.25}
+ if(!G.demo){const cx=(G.P.x+G.E.x)/2,tz=clamp(W/(dist()*1.12+420),W/2950,W/700);CAM.x+=(cx-CAM.x)*Math.min(1,dt*2.5);CAM.z+=(tz-CAM.z)*Math.min(1,dt*1.8)}else{CAM.x=510+Math.sin(performance.now()/4000)*40;CAM.z=W/700;G.P.phase+=dt*.3;G.E.phase+=dt*.25}
  const sh=G.shake;ctx.save();if(sh>0)ctx.translate(rnd(-sh,sh)*S0*.6,rnd(-sh,sh)*S0*.6);G.shake=Math.max(0,sh-dt*40);
  const SCP=!G.demo&&(G.P.aiming||(G.impact&&G.impact.l>0));if(SCP){drawScope(dt)}else{scene();mech(G.P);mech(G.E);
  for(const s of G.shots){const p=s.t/s.T,x0=wx(s.from.x)+(s.from.side<0?1:-1)*(s.from.bl+30)*SC()*s.from.size,x1=wx(s.to.x),x=x0+(x1-x0)*p,y=s.rk?GY-(12+Math.sin(Math.PI*p)*30)*SC():GY-52*SC()-Math.sin(Math.PI*p)*14*SC();
