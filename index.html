@@ -109,6 +109,7 @@ header p{margin:0;font-size:14px;opacity:.75}
 .tag{background:#3a1f18;border:1px solid #6a2e20;color:#f0b8a8;border-radius:4px;padding:2px 8px;font-size:14px;white-space:nowrap}
 .tag.dead{opacity:.4;text-decoration:line-through}
 .tag.next{background:#7a2715;color:#fff}
+.tag.boss{border-color:#ffcf4a;color:#ffe08a}
 .note{font-size:13px;opacity:.75}
 .lst{margin:6px 0 12px;padding-left:1.2em}
 details{max-width:1180px;margin:0 auto 30px;padding:0 max(3vw,14px)}
@@ -121,7 +122,7 @@ summary{cursor:pointer;font-weight:700;min-height:44px;display:flex;align-items:
 <body>
 <header>
   <h1>鋼脚戦記<span>南島 1965</span></h1>
-  <p>歩行戦車部隊で島を北へ攻め上がる・試作第6版</p>
+  <p>歩行戦車部隊で沖縄本島を北へ攻め上がる・試作第7版</p>
 </header>
 <main class="housing">
   <div class="screen" id="view">
@@ -183,21 +184,32 @@ const FOES={
  light:{n:'軽歩行車 ハヤテ',hp:560,dmg:.8,aimSpd:42,reload:3.4,speed:60,pref:700,dodge:1.3,col:['#6f7468','#4a4e45','#a3a898'],size:.85,hull:'lite',wL:'auto',wR:'auto',sq:[]},
  heavy:{n:'重歩行車 イワオ',hp:950,dmg:1.05,aimSpd:30,reload:4.8,speed:34,pref:950,dodge:.3,col:['#6c6e71','#46484c','#a0a2a6'],size:1.05,hull:'std',wL:'cannon',wR:'cannon',sq:[{t:'assault',men:6}]},
  art:{n:'自走歩行砲 トドロキ',hp:650,dmg:1.35,aimSpd:24,reload:6,speed:24,pref:1950,dodge:0,art:1,col:['#7a6a52','#54493a','#a8977a'],size:1,hull:'heavy',wL:'how',wR:'how',sq:[]},
- boss:{n:'指揮型 クロガネ',hp:1500,dmg:1.2,aimSpd:34,reload:4.2,speed:36,pref:1050,dodge:.6,col:['#3e3f44','#26272b','#6a6c74'],size:1.22,hull:'wedge',wL:'rocket',wR:'lcannon',sq:[{t:'assault',men:7},{t:'repair',men:6}]}};
+ boss:{boss:1,note:'名護を守る指揮型。噴進砲と長砲身で攻守に隙がない。',n:'指揮型 クロガネ',hp:1600,dmg:1.2,aimSpd:34,reload:4.2,speed:36,pref:1050,dodge:.6,col:['#3e3f44','#26272b','#6a6c74'],size:1.22,hull:'wedge',wL:'rocket',wR:'lcannon',sq:[{t:'assault',men:7},{t:'repair',men:6}]},
+ bossA:{boss:1,note:'那覇港の守護者。両腕のガトリングで弾幕を張る。すばしっこさは無いが手数が多い。',n:'港湾守備型 ガンテツ',hp:1150,dmg:1.05,aimSpd:40,reload:3.2,speed:40,pref:800,dodge:.4,col:['#4a5446','#2e352c','#7c8a74'],size:1.25,hull:'heavy',wL:'auto',wR:'auto',sq:[{t:'assault',men:7}]},
+ bossB:{boss:1,art:1,note:'嘉手納の移動砲台。遠いほど正確な榴弾砲2門。懐に飛び込め。',n:'移動砲台 ライデン',hp:1550,dmg:1.5,aimSpd:26,reload:5.4,speed:22,pref:2100,dodge:0,col:['#6e6248','#4a4130','#a2916e'],size:1.32,hull:'heavy',wL:'how',wR:'how',sq:[{t:'repair',men:6}]},
+ final:{boss:1,final:1,note:'辺戸岬の大要塞。装甲が厚く、半分まで削ると暴走して攻撃が激しくなる。',n:'大要塞 テンカ',hp:3200,dmg:1.4,aimSpd:32,reload:4.2,speed:24,pref:1200,dodge:.2,col:['#3a2e2a','#221a18','#7a5a4a'],size:1.6,hull:'heavy',wL:'rocket',wR:'lcannon',sq:[{t:'assault',men:8},{t:'repair',men:8}]}};
 const UPG={armor:['追加装甲','最大装甲 +15%'],gun:['火器強化','両腕の威力 +12%'],sight:['照準器','照準速度 +15%'],legs:['脚部強化','移動 +15%'],loader:['自動装填機','装填 -10%']};
 const UCOST=[120,220,360];
 const SQ={assault:['突撃分隊','230m以内で肉薄、脚を壊す',14],repair:['整備分隊','止まっている間に装甲修理',20],smoke:['煙幕分隊','8秒間、敵の命中を大幅に下げる',18],rocket:['対戦車噴進班','600m以内で噴進弾(1戦1回)',999]};
 const SQCOST=90,MEN=6;
 const PART={body:['胴体',1],legs:['脚部',.82],gun:['腕の火器',.68]};
 const NODES=[
- {n:'白浜',prop:'beach',x:52,y:150,to:[1],foes:['light'],pay:150,sky:0},
- {n:'赤瓦の町',prop:'town',x:44,y:128,to:[2,3],foes:['light','heavy'],pay:220,sky:1},
- {n:'台地',prop:'hill',x:34,y:104,to:[4],foes:['heavy','art'],pay:300,sky:2},
- {n:'港',prop:'port',x:64,y:108,to:[4],foes:['light','light'],pay:240,sky:0},
- {n:'飛行場跡',prop:'air',x:50,y:82,to:[5,6],foes:['heavy','art','light'],pay:380,sky:3},
- {n:'岬',prop:'cape',x:30,y:56,to:[7],foes:['art','art','light'],pay:360,sky:1},
- {n:'峠',prop:'pass',x:64,y:52,to:[7],foes:['heavy','heavy'],pay:360,sky:2},
- {n:'北砦',prop:'fort',x:56,y:22,to:[],foes:['light','heavy','boss'],pay:500,sky:3,final:1}];
+ {n:'喜屋武岬',prop:'beach',x:37,y:157,to:[1],foes:['light'],pay:150,sky:0},
+ {n:'糸満',prop:'port',x:31,y:148,to:[2],foes:['light','heavy'],pay:200,sky:1},
+ {n:'那覇',prop:'port',x:30,y:136,to:[3,4],foes:['light','heavy','bossA'],pay:450,sky:0,boss:1},
+ {n:'首里',lr:1,prop:'town',x:39,y:130,to:[5],foes:['heavy','art'],pay:280,sky:2},
+ {n:'浦添',prop:'town',x:32,y:126,to:[5],foes:['light','light','heavy'],pay:280,sky:1},
+ {n:'宜野湾',prop:'town',x:36,y:119,to:[6],foes:['heavy','art','light'],pay:320,sky:3},
+ {n:'嘉手納',prop:'air',x:36,y:110,to:[7,8],foes:['art','heavy','bossB'],pay:600,sky:1,boss:1},
+ {n:'読谷',prop:'beach',x:30,y:102,to:[9],foes:['light','art','art'],pay:360,sky:0},
+ {n:'うるま',prop:'port',x:58,y:106,to:[9],foes:['heavy','heavy','light'],pay:360,sky:2},
+ {n:'石川',lr:1,prop:'hill',x:47,y:95,to:[10],foes:['art','heavy'],pay:360,sky:3},
+ {n:'恩納',prop:'beach',x:41,y:87,to:[11],foes:['light','light','heavy'],pay:380,sky:0},
+ {n:'名護',lr:1,prop:'town',x:46,y:72,to:[12,13],foes:['heavy','art','boss'],pay:700,sky:1,boss:1},
+ {n:'本部',prop:'cape',x:30,y:62,to:[14],foes:['art','art','heavy'],pay:420,sky:2},
+ {n:'東村',prop:'pass',x:60,y:47,to:[14],foes:['heavy','heavy','light'],pay:420,sky:3},
+ {n:'国頭',prop:'pass',x:60,y:27,to:[15],foes:['heavy','art','heavy'],pay:480,sky:1},
+ {n:'辺戸岬',prop:'fort',x:66,y:11,to:[],foes:['heavy','bossA','final'],pay:1000,sky:3,final:1,boss:1}];
 const SKY=[['#394348','#9a7a62','#cdb391'],['#4b5258','#7c8388','#abaeac'],['#22262e','#5a4a52','#a06c52'],['#0d1117','#1c2430','#34404c']];
 const GRD=[['#7a7452','#8f8462','#4b4532'],['#6c7058','#828468','#474838'],['#6e5a46','#8a6e52','#43362a'],['#2b322d','#384036','#1a1f1b']];
 const SEA=['#4a666c','#56676e','#3a4660','#16223a'];
@@ -208,10 +220,10 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(_){}}
 const CREW={kaji:['比嘉','宮城','新垣'],aka:['砂川','友利','平良'],gaju:['下地','池間','垣花']};
 const ROLES=[['drv','操縦手'],['gun','砲手'],['ldr','装填手']],CMAX=5,cNeed=l=>l*80;
 const mkCrew=()=>({drv:{lv:1,exp:0},gun:{lv:1,exp:0},ldr:{lv:1,exp:0}});
-function norm(s){s.runs=s.runs||1;s.roster.forEach(m=>{if(!m.crew)m.crew=mkCrew();if(!m.cn)m.cn=(CREW[m.id]||['名無','名無','名無']).slice();if(!m.wL)m.wL=BASE[m.id].wL;if(!m.wR)m.wR=BASE[m.id].wR;m.sq.forEach(q=>{q.lv=q.lv||1;q.exp=q.exp||0})});return s}
+function norm(s){s.runs=s.runs||1;if(!s.map2){s.cleared=[];s.at=-1;s.done=false;s.map2=1}s.roster.forEach(m=>{if(!m.crew)m.crew=mkCrew();if(!m.cn)m.cn=(CREW[m.id]||['名無','名無','名無']).slice();if(!m.wL)m.wL=BASE[m.id].wL;if(!m.wR)m.wR=BASE[m.id].wR;m.sq.forEach(q=>{q.lv=q.lv||1;q.exp=q.exp||0})});return s}
 const crewTxt=m=>`操${m.crew.drv.lv}・砲${m.crew.gun.lv}・装${m.crew.ldr.lv}`;
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.roster)return norm(s)}catch(_){}return null}
-function newGame(){S={funds:300,at:-1,cleared:[],done:false,runs:1,roster:['kaji','aka','gaju'].map(id=>({id,hp:0,crew:mkCrew(),cn:CREW[id].slice(),wL:BASE[id].wL,wR:BASE[id].wR,up:{armor:0,gun:0,sight:0,legs:0,loader:0},sq:[]}))};
+function newGame(){S={funds:300,at:-1,cleared:[],done:false,runs:1,map2:1,roster:['kaji','aka','gaju'].map(id=>({id,hp:0,crew:mkCrew(),cn:CREW[id].slice(),wL:BASE[id].wL,wR:BASE[id].wR,up:{armor:0,gun:0,sight:0,legs:0,loader:0},sq:[]}))};
  S.roster[0].sq=[{t:'assault',men:MEN,lv:1,exp:0}];S.roster[1].sq=[{t:'smoke',men:MEN,lv:1,exp:0}];S.roster[2].sq=[{t:'repair',men:MEN,lv:1,exp:0}];S.roster.forEach(m=>m.hp=stats(m).max);save()}
 function stats(m){const b=BASE[m.id],u=m.up,c=m.crew||mkCrew(),g=c.gun.lv-1,d=c.drv.lv-1,l=c.ldr.lv-1,wL=m.wL||b.wL,wR=m.wR||b.wR,rk=k=>WEAP[k].rl*(1-.1*u.loader)*(1-.06*l);
  return{...b,pilot:(m.cn||CREW.kaji)[0],wL,wR,rmx:{L:rk(wL),R:rk(wR)},reload:rk(wR),max:Math.round(b.hp*(1+.15*u.armor)),dmg:b.dmg*(1+.12*u.gun),aimSpd:b.aimSpd*(1+.15*u.sight)*(1+.08*g),capB:3*u.sight+3*g,swayMul:1-.07*g,evade:.04*d+(b.evB||0),speed:b.speed*(1+.15*u.legs)*(1+.06*d)}}
@@ -234,18 +246,18 @@ let mode='title';
 function go(m){mode=m;$('view').hidden=!(m==='title'||m==='battle');$('tOver').hidden=m!=='title';$('bHud').hidden=m!=='battle';$('bPanel').hidden=m!=='battle';if(m!=='battle')$('bOver').hidden=true;
  SCR.forEach(s=>$(s).hidden=s!==m);if(m==='title'||m==='battle')requestAnimationFrame(fit);window.scrollTo&&m!=='battle'&&window.scrollTo(0,0)}
 function title(){go('title');demo();const has=load();
- const rn=has&&has.runs>1?`<p class="stat">第${has.runs}次 南島作戦 ・ 古参の乗員が待っている</p>`:'';$('tOver').innerHTML=`<div><h2>鋼脚戦記<br>南島 1965</h2><p>南北に分かれた島。南方守備隊の歩行戦車3機を率いて、北端の砦まで攻め上がれ。</p>${rn}<div class="row2">${has?'<button class="btn go" data-a="cont">続きから</button>':''}<button class="btn ${has?'':'go'}" data-a="new">${has?'最初から':'出撃準備'}</button></div></div>`}
+ const rn=has&&has.runs>1?`<p class="stat">第${has.runs}次 沖縄本島作戦 ・ 古参の乗員が待っている</p>`:'';$('tOver').innerHTML=`<div><h2>鋼脚戦記<br>南島 1965</h2><p>南北に分かれた1965年の沖縄本島。南方守備隊の歩行戦車3機を率いて、喜屋武岬から辺戸岬まで攻め上がれ。</p>${rn}<div class="row2">${has?'<button class="btn go" data-a="cont">続きから</button>':''}<button class="btn ${has?'':'go'}" data-a="new">${has?'最初から':'出撃準備'}</button></div></div>`}
 $('tOver').addEventListener('click',e=>{const a=e.target.closest('[data-a]');if(!a)return;audio();sfx('ui');if(a.dataset.a==='new')newGame();else S=load();mapView()});
 /* ================= 作戦地図 ================= */
 let SEL=null;
-const ISLAND='M52 166 C40 162 37 152 42 142 C30 134 33 122 29 112 C22 100 27 88 36 80 C27 70 19 60 23 49 C27 37 43 34 45 24 C47 13 57 4 65 9 C72 15 65 28 69 38 C75 50 72 62 67 72 C76 82 74 95 72 104 C78 117 66 127 62 137 C65 149 62 161 52 166Z';
+const ISLAND='M37 163 L30 154 L27 146 L26 138 L28 131 L30 124 L32 116 L31 110 L27 104 L29 99 L34 95 L37 90 L39 82 L41 76 L37 73 L30 70 L24 64 L25 57 L31 54 L38 57 L44 55 L47 48 L52 38 L55 28 L60 17 L64 7 L70 8 L71 15 L69 24 L67 34 L64 44 L61 54 L57 63 L54 72 L52 82 L51 90 L53 96 L60 101 L65 106 L60 110 L53 110 L49 115 L48 123 L47 131 L53 135 L52 142 L47 149 L44 156 L41 161 Z';
 function rosterMini(){return S.roster.map(m=>{const s=stats(m);return `<div class="row"><span>${s.n}<small class="note"> ${crewTxt(m)}</small></span><b>${m.hp<=0?'<span style="color:var(--red)">大破</span>':Math.ceil(m.hp)+' / '+s.max}</b></div><div class="bar"><i style="width:${m.hp/s.max*100}%;background:${m.hp/s.max<.35?'var(--red)':'var(--hp)'}"></i></div>`}).join('')}
 function mapView(){go('map');const av=avail(),pk=pickable();if(SEL==null||!pk.includes(SEL))SEL=av[0]??S.at;
  const ed=NODES.flatMap((n,i)=>n.to.map(t=>{const m=NODES[t],on=S.cleared.includes(i)&&(S.cleared.includes(t)||av.includes(t));return `<line class="ed ${on?'on':''}" x1="${n.x}" y1="${n.y}" x2="${m.x}" y2="${m.y}"/>`})).join('');
- const nd=NODES.map((n,i)=>{const c=S.cleared.includes(i),a=av.includes(i);return `<g class="nd ${a?'av':c?'re':'lock'} ${SEL===i?'sel':''}" data-n="${i}"><circle cx="${n.x}" cy="${n.y}" r="${n.final?5.2:4}" fill="${c?'#86965a':a?'#d9452b':'#5a4a40'}"/>${c?`<path d="M${n.x-2} ${n.y} l1.6 1.8 l3-3.6" stroke="#fff" stroke-width="1" fill="none"/>`:''}<text x="${n.x+(n.x>50?6.5:-6.5)}" y="${n.y+1.6}" text-anchor="${n.x>50?'start':'end'}">${n.n}</text></g>`}).join('');
+ const nd=NODES.map((n,i)=>{const c=S.cleared.includes(i),a=av.includes(i);return `<g class="nd ${a?'av':c?'re':'lock'} ${SEL===i?'sel':''}" data-n="${i}">${n.boss?`<circle cx="${n.x}" cy="${n.y}" r="${n.final?7.4:5.8}" fill="none" stroke="#ffcf4a" stroke-width="${n.final?1.2:.9}" stroke-dasharray="${n.final?'':'1.4 1'}"/>`:''}<circle cx="${n.x}" cy="${n.y}" r="${n.final?5.6:n.boss?4.6:3.6}" fill="${c?'#86965a':a?'#d9452b':'#5a4a40'}"/>${n.boss&&!c?`<text x="${n.x}" y="${n.y+1.5}" text-anchor="middle" style="font-size:${n.final?4.6:3.8}px;fill:#ffcf4a;stroke:none">★</text>`:''}${c?`<path d="M${n.x-2} ${n.y} l1.6 1.8 l3-3.6" stroke="#fff" stroke-width="1" fill="none"/>`:''}<text x="${n.x+(n.x>50||n.lr?6.5:-6.5)}" y="${n.y+1.6}" text-anchor="${n.x>50||n.lr?'start':'end'}">${n.n}</text></g>`}).join('');
  const n=SEL!=null?NODES[SEL]:null;
- const rep=n&&S.cleared.includes(SEL);const info=n?`<h3>${n.n}<small>${rep?'制圧済み・再戦の報酬 '+Math.round(n.pay*.5)+' 円':n.final?'最終拠点':'報酬 '+n.pay+' 円'}</small></h3><div class="foe">${n.foes.map(f=>`<span class="tag">${FOES[f].n}</span>`).join('')}</div><p class="note">${n.foes.length}機と順番に一騎打ち。どの機体を出すかは毎回選べる。${n.final?'敵の指揮型を倒せば島は解放される。':''}</p><button class="btn go" data-a="sortie" style="width:100%">${rep?n.n+'で再戦する':n.n+'へ出撃'}</button><p class="note" style="margin:6px 0 0">制圧済みの拠点(緑)は何度でも再戦できる。資金稼ぎと乗員の訓練に。</p>`:`<h3>拠点を選んで</h3>`;
- $('map').innerHTML=`<div class="bar2"><h2>作戦地図</h2><span class="funds">${S.funds} 円</span></div><div class="mapgrid"><svg class="mapsvg" viewBox="0 0 100 170" role="img" aria-label="島の作戦地図"><path d="${ISLAND}" fill="#7f8a52" stroke="#d8c38c" stroke-width=".8"/><path d="${ISLAND}" fill="none" stroke="#3d4729" stroke-width=".3" transform="translate(1 1.4)" opacity=".5"/>${ed}${nd}<text x="6" y="10" font-size="5" fill="#cfe0e0" font-family="Dela Gothic One">北</text><path d="M8 12 l0 10" stroke="#cfe0e0" stroke-width=".6"/></svg>
+ const rep=n&&S.cleared.includes(SEL);const info=n?`<h3>${n.n}<small>${rep?'制圧済み・再戦の報酬 '+Math.round(n.pay*.5)+' 円':n.final?'最終拠点':'報酬 '+n.pay+' 円'}</small></h3><div class="foe">${n.foes.map(f=>`<span class="tag ${FOES[f].boss?'boss':''}">${FOES[f].final?'大ボス ':FOES[f].boss?'BOSS ':''}${FOES[f].n}</span>`).join('')}</div><p class="note">${n.foes.length}機と順番に一騎打ち。どの機体を出すかは毎回選べる。${n.final?'大要塞テンカを倒せば沖縄本島は解放される。':n.boss?'ボスが待ち構えている。修理と換装を済ませてから行こう。':''}</p><button class="btn go" data-a="sortie" style="width:100%">${rep?n.n+'で再戦する':n.n+'へ出撃'}</button><p class="note" style="margin:6px 0 0">制圧済みの拠点(緑)は何度でも再戦できる。資金稼ぎと乗員の訓練に。</p>`:`<h3>拠点を選んで</h3>`;
+ $('map').innerHTML=`<div class="bar2"><h2>作戦地図</h2><span class="funds">${S.funds} 円</span></div><div class="mapgrid"><svg class="mapsvg" viewBox="0 0 100 170" role="img" aria-label="沖縄本島の作戦地図"><path d="${ISLAND}" fill="#7f8a52" stroke="#d8c38c" stroke-width=".8" stroke-linejoin="round"/><text x="74" y="128" font-size="4" fill="#9fc4c8" font-family="Zen Kaku Gothic New">太平洋</text><text x="4" y="86" font-size="4" fill="#9fc4c8" font-family="Zen Kaku Gothic New">東シナ海</text><circle cx="12" cy="140" r="1.6" fill="#6f7a4a"/><circle cx="9" cy="143" r="1.1" fill="#6f7a4a"/><circle cx="14" cy="145" r="1.2" fill="#6f7a4a"/><circle cx="18" cy="62" r="1.6" fill="#6f7a4a"/><path d="${ISLAND}" fill="none" stroke="#3d4729" stroke-width=".3" transform="translate(1 1.4)" opacity=".5"/>${ed}${nd}<text x="6" y="10" font-size="5" fill="#cfe0e0" font-family="Dela Gothic One">北</text><path d="M8 12 l0 10" stroke="#cfe0e0" stroke-width=".6"/></svg>
  <div style="display:flex;flex-direction:column;gap:10px"><div class="box">${info}</div><div class="box"><h3>部隊<small>損傷は持ち越し</small></h3>${rosterMini()}<button class="btn" data-a="hangar" style="width:100%;margin-top:6px">格納庫(修理・機体・武器・分隊)</button></div><button class="btn" data-a="title">題字に戻る</button></div></div>`}
 $('map').addEventListener('click',e=>{const g=e.target.closest('.nd');if(g){const i=+g.dataset.n;if(pickable().includes(i)){SEL=i;sfx('ui');mapView()}return}
  const a=e.target.closest('[data-a]');if(!a)return;sfx('ui');const k=a.dataset.a;if(k==='sortie'&&SEL!=null)startStage(SEL);else if(k==='hangar')hangar();else if(k==='title')title()});
@@ -281,7 +293,7 @@ let BT=null;
 function startStage(i){BT={replay:S.cleared.includes(i),node:i,foes:NODES[i].foes.map(t=>({t,hp:FOES[t].hp,sq:FOES[t].sq.map(q=>({...q}))})),kills:0,ups:[],exp:0};pre()}
 function pre(){go('pre');const nd=NODES[BT.node],alive=BT.foes.filter(f=>f.hp>0),nx=alive[0],F=FOES[nx.t];
  $('pre').innerHTML=`<div class="bar2"><h2>${nd.n} ・ 出撃機を選ぶ</h2><span class="funds">${S.funds} 円</span></div>
- <div class="box"><h3>次の敵：${F.n}<small>装甲 ${Math.ceil(nx.hp)} / ${F.hp}</small></h3><div class="foe">${BT.foes.map(f=>`<span class="tag ${f.hp<=0?'dead':f===nx?'next':''}">${FOES[f.t].n}${f.hp>0&&f.hp<FOES[f.t].hp?' (損傷)':''}</span>`).join('')}</div><p class="note">${F.art?'遠距離ほど正確な砲撃型。懐に飛び込め。':F.dodge>1?'すばしっこい。照準を溜めるとかわされやすい。':F.sq.length?'随伴歩兵が肉薄攻撃を仕掛けてくる。':'標準的な相手。'}</p></div>
+ <div class="box"><h3>次の敵：${F.final?'大ボス ':F.boss?'BOSS ':''}${F.n}<small>装甲 ${Math.ceil(nx.hp)} / ${F.hp}</small></h3><div class="foe">${BT.foes.map(f=>`<span class="tag ${f.hp<=0?'dead':f===nx?'next':''} ${FOES[f.t].boss?'boss':''}">${FOES[f.t].final?'大ボス ':FOES[f.t].boss?'BOSS ':''}${FOES[f.t].n}${f.hp>0&&f.hp<FOES[f.t].hp?' (損傷)':''}</span>`).join('')}</div><p class="note">${F.note?F.note:F.art?'遠距離ほど正確な砲撃型。懐に飛び込め。':F.dodge>1?'すばしっこい。照準を溜めるとかわされやすい。':F.sq.length?'随伴歩兵が肉薄攻撃を仕掛けてくる。':'標準的な相手。'}</p></div>
  <div class="cards" style="margin-top:10px">${S.roster.map((m,i)=>{const s=stats(m);return `<button class="mc pick" data-i="${i}" ${m.hp<=0?'disabled':''}><h3>${s.n}<small>${s.type}・${crewTxt(m)}</small></h3><div class="row"><span>装甲</span><b>${m.hp<=0?'大破':Math.ceil(m.hp)+' / '+s.max}</b></div><div class="bar"><i style="width:${m.hp/s.max*100}%;background:${m.hp/s.max<.35?'var(--red)':'var(--hp)'}"></i></div><span class="note">左 ${WEAP[m.wL].n}・右 ${WEAP[m.wR].n}</span><span class="note">分隊：${m.sq.length?m.sq.map(q=>SQ[q.t][0]+'★'+(q.lv||1)+' '+q.men+'名').join('・'):'なし'}</span></button>`}).join('')}</div>
  <div class="row2" style="margin-top:12px"><button class="btn" data-a="retreat">撤退する(資金 -100 円)</button></div>`}
 $('pre').addEventListener('click',e=>{const p=e.target.closest('.pick');if(p&&!p.disabled){sfx('ui');startDuel(+p.dataset.i);return}const a=e.target.closest('[data-a]');if(a&&a.dataset.a==='retreat')stageFail(true)});
@@ -290,7 +302,7 @@ function gameOver(){const vets=S.roster.map(m=>({crew:m.crew,cn:m.cn,sq:m.sq.map
  newGame();S.runs=runs;S.funds=400;S.roster.forEach((m,i)=>{m.crew=vets[i].crew;m.cn=vets[i].cn;m.sq=vets[i].sq;m.hp=stats(m).max});save();go('result');
  $('result').innerHTML=`<div class="box" style="text-align:center;padding:26px 16px"><p class="big" style="color:#ff6a4a">GAME OVER</p><p>部隊は全滅した。島の南端まで押し戻され、作戦は最初からやり直しになる。<br>でも生き残った乗員の腕と、分隊の熟練は次の作戦に引き継がれる。</p><p class="stat">制圧していた拠点 ${reached} ・ 次は第${runs}次作戦 ・ 資金 400 円から</p><ul class="lst" style="text-align:left;max-width:30em;margin:10px auto">${S.roster.map(m=>`<li>${m.cn.map((n,j)=>ROLES[j][1]+n+' Lv'+m.crew[ROLES[j][0]].lv).join('・')}${m.sq.length?' / '+m.sq.map(q=>SQ[q.t][0]+'★'+q.lv).join('・'):''}</li>`).join('')}</ul><button class="btn go" data-a="map" style="min-width:220px">第${runs}次作戦へ</button></div>`}
 function stageClear(){const nd=NODES[BT.node],rp=BT.replay,base=rp?Math.round(nd.pay*.5):nd.pay,pay=base+BT.kills*40;S.funds+=pay;if(!rp){S.cleared.push(BT.node);S.at=BT.node}S.roster.forEach(m=>{if(m.hp>0)ROLES.forEach(r=>gainCrew(m,r[0],12))});if(nd.final&&!rp)S.done=true;save();go('result');
- $('result').innerHTML=nd.final&&!rp?`<div class="box" style="text-align:center;padding:28px 16px"><p class="big">北砦 陥落</p><p>指揮型クロガネは沈黙し、島に朝が来た。南方守備隊の3機は、焼けた浜をゆっくり引き返していく。</p><p class="stat">最終報酬 ${pay} 円 ・ 最終資金 ${S.funds} 円</p><ul class="lst" style="text-align:left;max-width:30em;margin:10px auto">${S.roster.map(m=>`<li>${BASE[m.id].n}：${ROLES.map(([k,rl],j)=>rl+m.cn[j]+' Lv'+m.crew[k].lv).join('・')}</li>`).join('')}</ul><div class="row2"><button class="btn go" data-a="map">作戦地図へ(再戦できる)</button><button class="btn" data-a="title">題字へ</button></div></div>`
+ $('result').innerHTML=nd.final&&!rp?`<div class="box" style="text-align:center;padding:28px 16px"><p class="big">辺戸岬 解放</p><p>大要塞テンカは崩れ落ち、本島の北の端に朝日が差した。喜屋武岬から続いた長い道のりを、南方守備隊の3機はゆっくり引き返していく。</p><p class="stat">最終報酬 ${pay} 円 ・ 最終資金 ${S.funds} 円</p><ul class="lst" style="text-align:left;max-width:30em;margin:10px auto">${S.roster.map(m=>`<li>${BASE[m.id].n}：${ROLES.map(([k,rl],j)=>rl+m.cn[j]+' Lv'+m.crew[k].lv).join('・')}</li>`).join('')}</ul><div class="row2"><button class="btn go" data-a="map">作戦地図へ(再戦できる)</button><button class="btn" data-a="title">題字へ</button></div></div>`
  :`<div class="box" style="padding:22px 16px"><p class="big">${nd.n} ${rp?'再戦 勝利':'制圧'}</p><div class="row"><span>${rp?'再戦報酬(半額)':'拠点報酬'}</span><b>${base} 円</b></div><div class="row"><span>撃破 ${BT.kills}機 × 40</span><b>${BT.kills*40} 円</b></div><div class="row" style="font-size:18px;margin-top:4px"><span>資金</span><b class="funds">${S.funds} 円</b></div>${BT.ups.length?`<ul class="lst">${BT.ups.map(u=>`<li>${u}</li>`).join('')}</ul>`:''}<div class="row2" style="margin-top:14px"><button class="btn go" data-a="hangar">格納庫へ</button><button class="btn" data-a="map">作戦地図へ</button></div></div>`}
 function stageFail(vol){S.roster.forEach(m=>{const mx=stats(m).max;if(m.hp<mx*.25)m.hp=Math.round(mx*.25)});S.funds=Math.max(0,S.funds-100);save();go('result');
  $('result').innerHTML=`<div class="box" style="padding:22px 16px"><p class="big">${vol?'撤退':'部隊壊滅・撤退'}</p><p>${vol?'態勢を立て直す。':'全機が動けなくなった。回収班が機体を引きずって戻った。'}拠点の敵は損傷が回復している。修理と改造で出直そう。</p><p class="stat">資金 -100 円 → ${S.funds} 円</p><div class="row2"><button class="btn go" data-a="hangar">格納庫へ</button><button class="btn" data-a="map">作戦地図へ</button></div></div>`}
@@ -303,11 +315,11 @@ const _t=0; /* 戦闘の速さ(1=元の速さ、小さいほどゆっくり) */
 function fit(){const r=cv.getBoundingClientRect();if(!r.width)return;const d=Math.min(2,window.devicePixelRatio||1);W=r.width;H=r.height;cv.width=Math.round(W*d);cv.height=Math.round(H*d);ctx.setTransform(d,0,0,d,0,0);S0=H/320;GY=H*.84}
 const cvRO=new ResizeObserver(fit);cvRO.observe(cv);
 let G=null,CAM={x:500,z:.8},logDirty=true;
-function mkUnit(src,side,def,persist){const u={side,x:side<0?200:2300,hp:persist.hp,max:def.max||def.hp,legs:100,gun:100,dmg:def.dmg,aimSpd:def.aimSpd,capB:def.capB||0,rmax:def.reload,reload:1.2,speed:def.speed,col:def.col,size:def.size,bl:WEAP[def.wR].len,wL:def.wL,wR:def.wR,hull:def.hull,arm:'R',fl:{L:0,R:0},flee:false,evMode:false,jinkT:0,man:false,burn:0,rmx:def.rmx,rl:side<0?{L:1.6,R:1.2}:null,name:def.n,art:!!def.art,pref:def.pref||0,dodge:def.dodge||0,dodgeT:0,swayMul:def.swayMul||1,evade:def.evade||0,lat:0,latDir:Math.random()<.5?1:-1,aiming:false,aim:0,aimT:0,thr:60,part:'body',dir:0,phase:Math.random()*6,recoil:0,flash:0,smoke:0,busy:0,busyKind:'',repairAmt:0,deadT:0,src,squads:persist.sq.map(q=>Object.assign(q,{cd:0,busy:0,used:0}))};return u}
+function mkUnit(src,side,def,persist){const u={side,x:side<0?200:2300,hp:persist.hp,max:def.max||def.hp,legs:100,gun:100,dmg:def.dmg,aimSpd:def.aimSpd,capB:def.capB||0,rmax:def.reload,reload:1.2,speed:def.speed,col:def.col,size:def.size,bl:WEAP[def.wR].len,wL:def.wL,wR:def.wR,hull:def.hull,arm:'R',fl:{L:0,R:0},flee:false,evMode:false,jinkT:0,man:false,burn:0,rmx:def.rmx,rl:side<0?{L:1.6,R:1.2}:null,name:def.n,art:!!def.art,final:!!def.final,boss:!!def.boss,pref:def.pref||0,dodge:def.dodge||0,dodgeT:0,swayMul:def.swayMul||1,evade:def.evade||0,lat:0,latDir:Math.random()<.5?1:-1,aiming:false,aim:0,aimT:0,thr:60,part:'body',dir:0,phase:Math.random()*6,recoil:0,flash:0,smoke:0,busy:0,busyKind:'',repairAmt:0,deadT:0,src,squads:persist.sq.map(q=>Object.assign(q,{cd:0,busy:0,used:0}))};return u}
 function startDuel(ri){const m=S.roster[ri],s=stats(m),f=BT.foes.find(x=>x.hp>0),F=FOES[f.t];
  G={t:0,run:true,over:false,paused:false,mg:0,prop:NODES[BT.node].prop,freeze:0,slow:0,shake:0,flashA:0,banner:null,sky:NODES[BT.node].sky,ri,fo:f,ups:[],shots:[],parts:[],texts:[],decals:[],log:[],hits:0,
   P:mkUnit(m,-1,s,m),E:mkUnit(f,1,F,f)};
- CAM={x:1250,z:W/2750};go('battle');buildSq();say(`${s.n} 出撃! 相手は${F.n}。`,'w');logDirty=true}
+ CAM={x:1250,z:W/2750};go('battle');buildSq();if(F.boss){banner(F.final?'大ボス出現':'BOSS',F.n,F.final?'#ff6a4a':'#ffcf4a');G.shake=10;sfx('heavy')}say(`${s.n} 出撃! 相手は${F.n}。`,'w');logDirty=true}
 function demo(){const m={id:'kaji',hp:900,wL:'auto',wR:'cannon',sq:[{t:'assault',men:6}],up:{armor:0,gun:0,sight:0,legs:0,loader:0}};
  G={t:0,run:false,over:false,demo:true,prop:'town',paused:false,freeze:0,slow:0,shake:0,flashA:0,banner:null,sky:2,shots:[],parts:[],texts:[],decals:[],log:[],P:mkUnit(m,-1,stats(m),{hp:900,sq:[{t:'assault',men:6}]}),E:mkUnit(null,1,FOES.heavy,{hp:950,sq:[{t:'assault',men:6}]})};
  G.P.x=380;G.E.x=640;CAM={x:510,z:W/700}}
@@ -398,6 +410,7 @@ function step(dt){G.t+=dt;ai(dt);scopeStep(dt);
   if(u.flee&&u.hp>0){u.dir=-1;u.aiming=false}
   if(u.side<0&&u.evMode&&!u.flee&&!u.aiming&&!u.busyKind&&u.hp>0&&!u.man){u.jinkT-=dt;if(u.jinkT<=0){if(u.dir){u.dir=0;u.jinkT=rnd(.15,.45)/(.6+agility(u))}else{const e=G.E;if((e.aiming&&e.aim>25)||Math.random()<.3){u.dir=u.x<150?1:dist()<300?-1:Math.random()<.5?1:-1;u.jinkT=rnd(.3,.7)*(.7+agility(u))}else u.jinkT=.25}}}
   u.smoke=Math.max(0,u.smoke-dt);u.flash=Math.max(0,u.flash-dt);u.recoil=Math.max(0,u.recoil-dt*4);
+  if(u.final&&!u.enraged&&u.hp>0&&u.hp<u.max*.5){u.enraged=1;u.aimSpd*=1.45;u.rmax*=.72;u.speed*=1.3;banner('暴 走','テンカの全砲門が火を噴く!','#ff6a4a');G.shake=18;G.flashA=.4;sfx('how');say('テンカが暴走した! 攻撃が激しくなる','e');for(let i=0;i<3;i++)boom(u.x+rnd(-20,20),rnd(40,110),1.2,'#ff9050')}
   if(u.hp<=0){u.dir=0;u.aiming=false;u.deadT=Math.min(1,u.deadT+dt*1.5);continue}
   u.squads.forEach(q=>{q.cd=Math.max(0,q.cd-dt);if(q.busy>0){q.busy-=dt;if(q.busy<=0)assault(u,q)}});
   if(u.dir){if(u.aiming){u.aiming=false;u.aim=0}if(u.busyKind){u.busy=0;u.busyKind='';say('修理中断','w')}const sp=u.speed*(.25+.75*u.legs/100)*(u.flee?1.7:1);u.x+=u.dir*sp*dt*2.2;if(Math.random()<dt*6)G.parts.push({k:'smoke',x:u.x+rnd(-6,6),y:2,vx:rnd(-4,4),vy:rnd(3,8),r:rnd(3,6),l:.9,m:.9,c:'#b8a57a'});u.phase+=dt*sp*.1;u.lat+=u.latDir*sp*dt*(u.dodgeT>0?1:.35)}
