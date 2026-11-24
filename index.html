@@ -332,6 +332,8 @@ const curW=u=>WEAP[u['w'+u.arm]];
 const agility=u=>clamp(.08+u.speed/260+(u.evade||0)*1.5,.08,.55),agiG=u=>{const a=agility(u);return a>=.45?'S':a>=.35?'A':a>=.25?'B':'C'};
 function startAim(u){if(u.reload>0||u.aiming||u.hp<=0||u.flee)return;if(u.side<0){const w=curW(u);if(w.range&&dist()>w.range){say(`${w.n}は${w.range}m以内で!`,'w');return}}u.aiming=true;u.aim=u.side<0?30:0;u.aimT=0;u.thr=rnd(52,84);if(u.side<0){G.zoom=1;G.ret={x:W/2,y:H*.46};G.rel={x:rnd(-6,6),y:76};G.swPh=rnd(0,100);G.lock={lat:G.E.lat,off:0};G.impact=null;G.jolt={x:0,y:0};scopeStep(0)}if(u.side>0){const r=Math.random();u.part=r<.72?'body':r<.86?'legs':'gun'}}
 function launchFx(s){const u=s.from,fx=s.fx||'std',fc=u.side<0?(u.flee?-1:1):-1,k=SC()/Math.max(1e-4,CAM.z),mx=u.x+fc*(WEAP[s.w||u.wR].len+40)*u.size*.98*k,my=78*u.size,P=u===G.P,sm=(n,r,c,vx,vy,l)=>{for(let i=0;i<n;i++)G.parts.push({k:'smoke',x:mx+rnd(-4,4),y:my+rnd(-4,4),vx:(vx||0)+rnd(-8,8),vy:(vy||4)+rnd(0,14),r:rnd(r*.6,r),l:l||1.2,m:l||1.2,c:c||'#c8c2b0'})};
+ if(fx!=='flame'){const r=({auto:8,snipe:10,rocket:16,heavy:24,how:29}[fx]||17)*u.size;
+  G.parts.push({k:'fire',x:mx,y:my,vx:fc*40,vy:0,r,l:.13,m:.13,c:fx==='snipe'?'#bfe6ff':'#ffb35d'});}
  if(fx==='heavy'){sm(12,14);G.parts.push({k:'ring',x:mx,y:my,vx:0,vy:0,r:4,l:.45,m:.45,c:'#fff0c8'});for(let i=0;i<8;i++)G.parts.push({k:'smoke',x:u.x+rnd(-20,20),y:2,vx:rnd(-20,20),vy:rnd(2,8),r:rnd(6,10),l:1.2,m:1.2,c:'#a8987a'});sfx('heavy');G.shake=Math.max(G.shake,P?9:6);G.flashA=Math.max(G.flashA,.12)}
  else if(fx==='auto'){sm(2,6);for(let i=0;i<2;i++)G.parts.push({k:'debris',x:u.x,y:my,vx:-fc*rnd(4,10),vy:rnd(40,70),r:1.3,l:1.6,m:1.6,c:'#d6a94a',rot:0,vr:rnd(-14,14)});sfx('auto');G.shake=Math.max(G.shake,2)}
  else if(fx==='how'){sm(14,18,'#b8b2a2',0,10,2.2);G.parts.push({k:'ring',x:mx,y:my,vx:0,vy:0,r:6,l:.5,m:.5,c:'#ffe2a8'});for(let i=0;i<10;i++)G.parts.push({k:'smoke',x:u.x+rnd(-26,26),y:2,vx:rnd(-30,30),vy:rnd(2,10),r:rnd(7,12),l:1.5,m:1.5,c:'#a8987a'});sfx('how');G.shake=Math.max(G.shake,P?11:7);G.flashA=Math.max(G.flashA,.15)}
@@ -339,7 +341,29 @@ function launchFx(s){const u=s.from,fx=s.fx||'std',fc=u.side<0?(u.flee?-1:1):-1,
  else if(fx==='snipe'){for(let i=0;i<6;i++)G.parts.push({k:'smoke',x:mx+fc*i*8,y:my+rnd(-1,1),vx:fc*rnd(2,6),vy:rnd(0,3),r:rnd(1.5,3),l:.9,m:.9,c:'#e8e6e0'});sfx('snipe');G.shake=Math.max(G.shake,3);G.flashA=Math.max(G.flashA,.06)}
  else if(fx==='flame'){for(let i=0;i<6;i++)G.parts.push({k:'fire',x:mx+fc*rnd(0,30),y:my+rnd(-4,4),vx:fc*rnd(20,60),vy:rnd(0,10),r:rnd(4,8),l:.35,m:.35});sfx('flame')}
  else{sm(6,10);G.parts.push({k:'debris',x:u.x,y:my,vx:-fc*rnd(4,10),vy:rnd(40,70),r:2,l:2,m:2,c:'#c9a45a',rot:0,vr:rnd(-10,10)});sfx('fire');G.shake=Math.max(G.shake,P?5:3);G.flashA=Math.max(G.flashA,.08)}}
-function impactFx(t,fx,crit,dir){const y=72*t.size,x=t.x;
+const reduceMotion=globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
+function burstFx(x,y,power,dir,c){
+ G.parts.push({k:'ring',x,y,vx:0,vy:0,r:5*power,l:.32,m:.32,c,grow:180*power});
+ G.parts.push({k:'fire',x,y,vx:0,vy:0,r:24*power,l:.19,m:.19,c});
+ const count=Math.ceil(8*power);
+ for(let i=0;i<count;i++){const a=i*2.39996,v=(60+(i%5)*18)*power,l=.22+(i%4)*.07;
+  G.parts.push({k:'spark',x,y,vx:Math.cos(a)*v+dir*35,vy:Math.sin(a)*v+55,r:1.3,l,m:l,c:i%3===0?'#fff9df':c});}
+}
+function wreckFx(t){
+ const x=t.x,s=t.size,y=65*s;
+ G.wreck={x,s,t:0,next:0};
+ burstFx(x,y,2.7*s,0,'#ffc56d');boom(x,y,2*s,'#ff9948');
+ G.parts.push({k:'ring',x,y:2,vx:0,vy:0,r:18*s,l:.64,m:.64,c:'#e8cc9a',grow:245*s});
+}
+const wreckBeats=[[.09,-18,96],[.23,21,35]];
+function advanceWreck(dt){const w=G.wreck;if(!w)return;
+ w.t+=dt;
+ while(w.next<wreckBeats.length&&w.t>=wreckBeats[w.next][0]){const [,dx,y]=wreckBeats[w.next++];
+  const x=w.x+dx*w.s;boom(x,y*w.s,1.45*w.s,'#ff8e46');burstFx(x,y*w.s,1.1*w.s,Math.sign(dx),'#ffad58');}
+}
+function impactFx(t,fx,crit,dir,part){const y=(crit?102:part==='legs'?32:part==='gun'?83:72)*t.size,x=t.x;
+ const power=crit?1.65:({auto:.42,flame:.4,snipe:.65,heavy:1.35,how:1.55,rocket:1.2}[fx]||.9);
+ if(fx!=='flame'||crit)burstFx(x,y,power*t.size,dir,fx==='snipe'?'#bfe6ff':crit?'#ff7b52':'#ffc675');
  if(fx==='heavy'){boom(x,y,crit?2.1:1.7,'#ffc86a');G.parts.push({k:'ring',x,y,vx:0,vy:0,r:6,l:.5,m:.5,c:'#fff2d0'})}
  else if(fx==='auto'){for(let i=0;i<10;i++)G.parts.push({k:'spark',x:x+rnd(-6,6),y:y+rnd(-10,10),vx:rnd(-50,50),vy:rnd(10,90),r:1,l:rnd(.2,.45),m:.45,c:'#ffd27a'});G.parts.push({k:'fire',x,y,vx:0,vy:0,r:7,l:.18,m:.18});G.parts.push({k:'smoke',x,y,vx:0,vy:10,r:5,l:.8,m:.8,c:'#5a5548'})}
  else if(fx==='how'){boom(x,y,crit?2.4:2.1,'#ffb860');G.parts.push({k:'ring',x,y:6,vx:0,vy:0,r:8,l:.6,m:.6,c:'#ffe2a8'});for(let i=0;i<12;i++)G.parts.push({k:'smoke',x:x+rnd(-14,14),y:y*.6+i*8,vx:rnd(-6,6),vy:rnd(22,40),r:rnd(12,22),l:3,m:3,c:'#3a352c'})}
@@ -377,11 +401,11 @@ function land(s){const t=s.to,u=s.from;if(t.hp<=0)return;
  if(s.part==='gun'){dmg*=.5;t.gun=clamp(t.gun-rnd(26,36),20,100)}
  hit(u,t,Math.round(dmg),s.part,crit,s.pl&&s.res.crit?s.res.lab:null,s.fx)}
 function hit(u,t,dmg,part,crit,lab,fx){fx=fx||'std';const fm={heavy:1.4,how:1.6,auto:.45,snipe:.7,flame:.5,rocket:1.2}[fx]||1;t.hp=Math.max(0,t.hp-dmg);if(t.aiming)t.aim*=.4;if(t===G.P&&t.aiming&&G.jolt){G.jolt={x:rnd(-1,1)*SR()*.35,y:rnd(-1,1)*SR()*.25}}
- impactFx(t,fx,crit,t.x>u.x?1:-1);pop(t,`-${dmg}`,crit?'#ff6a4a':'#ffe39a');if(fx==='snipe'&&!crit)G.texts.push({x:t.x,y:120*t.size,t:'貫通!',l:1.1,c:'#ffffff'});
+ impactFx(t,fx,crit,t.x>u.x?1:-1,part);pop(t,`-${dmg}`,crit?'#ff6a4a':'#ffe39a');if(fx==='snipe'&&!crit)G.texts.push({x:t.x,y:120*t.size,t:'貫通!',l:1.1,c:'#ffffff'});
  G.freeze=(crit?.22:.08)*Math.min(1.3,fm);G.shake=Math.max(G.shake,(crit?14:8)*fm);G.flashA=Math.max(G.flashA,(crit?.45:.22)*Math.min(1.2,fm));sfx(crit?'crit':fx==='auto'?'spark':fx==='how'||fx==='heavy'?'heavy':fx==='flame'?'flame':'hit');
  if(u===G.P)G.hits++;
  const pl=lab||PART[part][0];
- if(t.hp<=0){if(u===G.P)gainCrew(u.src,'gun',40);G.slow=1.6;G.shake=20;G.flashA=.7;sfx('kill');setTimeout(()=>sfx('kill'),180);for(let i=0;i<3;i++)boom(t.x+rnd(-14,14),rnd(20,70),1.8,'#ffb860');banner('撃 破',t.name,t.side>0?'#ffd98a':'#ff6a4a');say(`${t.name} 撃破!`,cls(u));return}
+ if(t.hp<=0){if(u===G.P)gainCrew(u.src,'gun',40);G.slow=1.6;G.shake=20;G.flashA=.48;sfx('kill');setTimeout(()=>sfx('kill'),180);wreckFx(t);banner('撃 破',t.name,t.side>0?'#ffd98a':'#ff6a4a');say(`${t.name} 撃破!`,cls(u));return}
  if(crit)banner('致命打!',`${pl}に${dmg}`,'#ff6a4a');else if(part==='legs')banner('脚部損傷','足が鈍った','#ffd98a');else if(part==='gun')banner('主砲損傷','照準が狂う','#ffd98a');
  say(`${t.name.split(' ')[0]}に命中! ${pl} ${dmg}${t.flee?'(背面)':''}`,cls(u))}
 function miss(t,fx){if(t===G.P&&G.P.src)gainCrew(G.P.src,'drv',t.dir?22:8);const mx=t.x+t.side*rnd(25,70);if(fx==='how'){boom(mx,2,1.4,'#c8a878');G.parts.push({k:'ring',x:mx,y:3,vx:0,vy:0,r:6,l:.5,m:.5,c:'#e8d4a8'});G.shake=Math.max(G.shake,6)}else if(fx==='auto'){for(let i=0;i<3;i++)G.parts.push({k:'smoke',x:mx+rnd(-14,14),y:2,vx:0,vy:rnd(6,14),r:rnd(3,5),l:.8,m:.8,c:'#b8a57a'})}else if(fx==='flame'){for(let i=0;i<6;i++)G.parts.push({k:'fire',x:mx+rnd(-12,12),y:rnd(2,10),vx:0,vy:10,r:rnd(5,9),l:.7,m:.7})}else if(fx==='snipe'){G.parts.push({k:'smoke',x:mx,y:2,vx:0,vy:10,r:4,l:.7,m:.7,c:'#c8b88a'})}else{boom(mx,2,.6,'#d8c38c');G.shake=Math.max(G.shake,3)}sfx('miss');pop(t,'外れ','#ebe5cd');say('外れ!','w')}
@@ -425,7 +449,7 @@ function step(dt){G.t+=dt;ai(dt);scopeStep(dt);
  G.mg+=dt;if(G.mg>=1){G.mg=0;if(dist()<180)for(const u of [G.P,G.E])if(u.hp>0&&Math.random()<.35&&killMen(foe(u),1))say(`機銃で${u===G.P?'敵':'味方'}歩兵1名負傷`,'w')}
  check()}
 function check(){if(!G.run)return;const P=G.P,E=G.E;let r=null;if(E.hp<=0)r='win';else if(P.hp<=0)r='lose';else if(G.escaped)r='flee';else if(G.t>=LIMIT)r='time';if(!r)return;
- G.run=false;G.over=true;P.dir=0;const m=G.P.src,f=G.fo;m.hp=Math.round(P.hp);f.hp=Math.round(E.hp);
+ G.run=false;G.over=true;P.dir=0;if(!G.wreck&&(r==='win'||r==='lose'))wreckFx(r==='win'?E:P);const m=G.P.src,f=G.fo;m.hp=Math.round(P.hp);f.hp=Math.round(E.hp);
  if(r!=='lose')gainCrew(m,'drv',r==='flee'?18:10);const ups=G.ups;if(r==='win')BT.kills++;save();
  const M={win:['勝利!',`${E.name}を撃破。`],lose:[`${P.name} 大破`,'機体は回収された。格納庫で修理するまで出撃できない。'],time:['時間切れ','決着つかず。損傷はそのまま持ち越し。'],flee:['離脱成功','背中に弾を浴びながらも戦場を抜けた。損傷はそのまま持ち越し。']}[r];
  setTimeout(()=>{const o=$('bOver');o.hidden=false;o.innerHTML=`<div><h2>${M[0]}</h2><p>${M[1]}</p>${ups.length?`<p class="stat">${ups.join('<br>')}</p>`:''}<button class="btn go" data-a="next" style="min-width:200px">次へ</button></div>`},r==='time'?300:1500)}
@@ -634,20 +658,22 @@ function drawScope(dt){const g=scopeGeom(),{R,cx,cy,s,z}=g,k=G.sky,sk=SKY[k],gr=
 function partsDraw(dt){const s=SC();G.parts=G.parts.filter(p=>{p.l-=dt;p.x+=p.vx*dt*DS;p.y+=p.vy*dt;
   if(p.k==='spark'||p.k==='debris'){p.vy-=260*dt;if(p.y<0){p.y=0;p.vy*=-.35;p.vx*=.55}}
   if(p.k==='smoke'){p.r+=8*dt;p.vx*=.98}
-  if(p.k==='ring')p.r+=110*dt;
+  if(p.k==='ring')p.r+=(p.grow||110)*dt;
   if(p.k==='debris')p.rot+=p.vr*dt;
   const a=clamp(p.l/p.m,0,1),x=wx(p.x),y=GY-p.y*s;
   if(p.k==='ring'){ctx.strokeStyle=p.c;ctx.globalAlpha=a*.8;ctx.lineWidth=3*s*a+1;ctx.beginPath();ctx.ellipse(x,y,p.r*s,p.r*s*.55,0,0,7);ctx.stroke();ctx.globalAlpha=1}
-  else if(p.k==='fire'){const r=p.r*s*(1.6-a*.6);const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,`rgba(255,250,220,${a})`);g.addColorStop(.4,`rgba(255,190,90,${a*.9})`);g.addColorStop(1,'rgba(200,60,20,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill()}
-  else if(p.k==='spark'){ctx.strokeStyle=p.c;ctx.globalAlpha=a;ctx.lineWidth=1.6*s;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-p.vx*DS*CAM.z*.04,y+p.vy*s*.04);ctx.stroke();ctx.globalAlpha=1}
+  else if(p.k==='fire'){const r=p.r*s*(1.6-a*.6);const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,'#fffadc');g.addColorStop(.4,p.c||'#ffbe5a');g.addColorStop(1,'rgba(200,60,20,0)');ctx.globalAlpha=a;ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();ctx.globalAlpha=1}
+  else if(p.k==='spark'){ctx.strokeStyle=p.c;ctx.globalAlpha=a;ctx.lineWidth=Math.max(1,1.6*p.r*s);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-p.vx*DS*CAM.z*.04,y+p.vy*s*.04);ctx.stroke();ctx.globalAlpha=1}
   else if(p.k==='debris'){ctx.save();ctx.translate(x,y);ctx.rotate(p.rot);ctx.globalAlpha=Math.min(1,a*2);ctx.fillStyle=p.c;ctx.fillRect(-p.r*s,-p.r*s*.6,p.r*2*s,p.r*1.2*s);ctx.restore();ctx.globalAlpha=1}
   else{ctx.globalAlpha=a*.55;ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(x,y,p.r*s,0,7);ctx.fill();ctx.globalAlpha=1}
   return p.l>0})}
-function draw(dt){if(!G)return;const T=G.demo?1:1;ctx.setTransform(1,0,0,1,0,0);const dpr=cv.width/W;ctx.setTransform(dpr,0,0,dpr,0,0);
- const F=G.follow;if(!G.demo&&F){const c=F.hold>0?null:(F.first.t>=0&&G.shots.includes(F.first)?F.first:F.last),tx=F.hold>0?F.hx:(c.t<0?c.from.x:shellX(c));CAM.x+=(tx-CAM.x)*Math.min(1,dt*9);CAM.z+=(W/520-CAM.z)*Math.min(1,dt*4)}
+function draw(dt){if(!G)return;ctx.setTransform(1,0,0,1,0,0);const dpr=cv.width/W;ctx.setTransform(dpr,0,0,dpr,0,0);
+ advanceWreck(dt);const quiet=reduceMotion?.matches,F=G.wreck?null:G.follow;
+ if(G.wreck&&!quiet){CAM.x+=(G.wreck.x-CAM.x)*Math.min(1,dt*24);CAM.z+=(W/420-CAM.z)*Math.min(1,dt*10)}
+ else if(!G.demo&&F){const c=F.hold>0?null:(F.first.t>=0&&G.shots.includes(F.first)?F.first:F.last),tx=F.hold>0?F.hx:(c.t<0?c.from.x:shellX(c));CAM.x+=(tx-CAM.x)*Math.min(1,dt*9);CAM.z+=(W/520-CAM.z)*Math.min(1,dt*4)}
  else if(!G.demo){const cx=(G.P.x+G.E.x)/2,tz=clamp(W/(dist()*1.12+420),W/2950,W/700);CAM.x+=(cx-CAM.x)*Math.min(1,dt*2.5);CAM.z+=(tz-CAM.z)*Math.min(1,dt*1.8)}else{CAM.x=510+Math.sin(performance.now()/4000)*40;CAM.z=W/700;G.P.phase+=dt*.3;G.E.phase+=dt*.25}
- const sh=G.shake;ctx.save();if(sh>0)ctx.translate(rnd(-sh,sh)*S0*.6,rnd(-sh,sh)*S0*.6);G.shake=Math.max(0,sh-dt*40);
- const SCP=!G.demo&&(G.P.aiming||(G.impact&&G.impact.l>0)),CH=F&&F.hold<=0?(F.first.t>=0&&G.shots.includes(F.first)?F.first:F.last):null,CHS=!SCP&&CH&&CH.t>=0&&G.shots.includes(CH);if(SCP){drawScope(dt)}else if(CHS){drawChase(CH,dt)}else{scene();mech(G.P);mech(G.E);
+ const sh=G.shake;ctx.save();if(sh>0&&!quiet)ctx.translate(rnd(-sh,sh)*S0*.6,rnd(-sh,sh)*S0*.6);G.shake=Math.max(0,sh-dt*40);
+ const SCP=!G.demo&&!G.wreck&&(G.P.aiming||(G.impact&&G.impact.l>0)),CH=F&&F.hold<=0?(F.first.t>=0&&G.shots.includes(F.first)?F.first:F.last):null,CHS=!SCP&&CH&&CH.t>=0&&G.shots.includes(CH);if(SCP){drawScope(dt)}else if(CHS){drawChase(CH,dt)}else{scene();mech(G.P);mech(G.E);
  for(const s of G.shots){if(s.t<0)continue;const fx=s.fx||(s.rk===1?'sq':'std'),p=s.t/s.T,dirf=s.from.side<0?(s.from.flee?-1:1):-1,x0=wx(s.from.x)+dirf*(s.from.bl+40)*SC()*s.from.size,x1=wx(s.to.x),x=x0+(x1-x0)*p,dx=x1-x0,sg=Math.sign(dx)||1,big=F&&s.pl,y0=GY-78*SC()*s.from.size;
   let y=fx==='sq'?GY-(12+Math.sin(Math.PI*p)*30)*SC():y0+(GY-72*SC()*s.to.size-y0)*p-Math.sin(Math.PI*p)*(fx==='how'?120:fx==='rocket'?26:12)*SC();if(fx==='rocket')y+=Math.sin(p*34)*3*SC();
   const wy=(GY-y)/SC(),spawn=dt>0;ctx.save();
@@ -664,7 +690,7 @@ function draw(dt){if(!G)return;const T=G.demo?1:1;ctx.setTransform(1,0,0,1,0,0);
  G.texts=G.texts.filter(t=>{t.l-=dt;t.y+=30*dt;const x=wx(t.x),y=GY-t.y*SC();ctx.globalAlpha=Math.min(1,t.l*1.5);ctx.lineWidth=4;ctx.strokeStyle='#14140c';ctx.strokeText(t.t,x,y);ctx.fillStyle=t.c;ctx.fillText(t.t,x,y);ctx.globalAlpha=1;return t.l>0});}
  ctx.restore();
  if(!G.demo&&G.E.aiming&&G.E.aim>50&&G.P.hp>0){const a=(.18+.12*Math.sin(G.t*14))*(G.E.aim/96);const g=ctx.createRadialGradient(W/2,H/2,H*.3,W/2,H/2,W*.7);g.addColorStop(0,'rgba(200,30,10,0)');g.addColorStop(1,`rgba(200,30,10,${a})`);ctx.fillStyle=g;ctx.fillRect(0,0,W,H)}
- if(G.flashA>0){ctx.fillStyle=`rgba(255,248,230,${G.flashA})`;ctx.fillRect(0,0,W,H);G.flashA=Math.max(0,G.flashA-dt*2.5)}
+ if(G.flashA>0){if(!quiet){ctx.fillStyle=`rgba(255,248,230,${G.flashA})`;ctx.fillRect(0,0,W,H)}G.flashA=Math.max(0,G.flashA-dt*2.5)}
  if(G.banner){const b=G.banner;b.l-=dt;const a=clamp(b.l*2,0,1),sc=1+Math.max(0,b.l-1.1)*2;ctx.save();ctx.globalAlpha=a;ctx.translate(W/2,H*.3);ctx.scale(sc,sc);ctx.transform(1,0,-.18,1,0,0);
   ctx.fillStyle='rgba(15,14,8,.65)';ctx.fillRect(-W,-34*S0,W*2,62*S0);ctx.textAlign='center';ctx.font=`400 ${Math.round(40*S0)}px "Dela Gothic One",sans-serif`;ctx.lineWidth=6;ctx.strokeStyle='#14140c';ctx.strokeText(b.t,0,8*S0);ctx.fillStyle=b.c;ctx.fillText(b.t,0,8*S0);
   ctx.font=`700 ${Math.max(12,13*S0)}px "Zen Kaku Gothic New",sans-serif`;ctx.fillStyle='#ebe5cd';ctx.fillText(b.sub,0,24*S0);ctx.restore();if(b.l<=0)G.banner=null}}
