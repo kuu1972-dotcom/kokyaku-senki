@@ -10,7 +10,7 @@ const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
 let js = scripts[scripts.length - 1][1].trimEnd();
 // スクリプト全体は { ... } のブロック。最後の } の直前にテスト用の出口を差し込む
 js = js.slice(0, -1) + `;globalThis.T={get S(){return S},get G(){return G},get BT(){return BT},
- get HX(){return HX},startHex,hexDistance,hexBoard,hexReach,hexMove,hexDamage,hexFire,hexEnd,
+ get HX(){return HX},startHex,hexDistance,hexBoard,hexReach,hexMove,hexEngage,hexOccupied,hexEnd,check,
  startStage,startDuel,step,draw,hud,act,hit,afterDuel,mapView,hangar,pre,newGame,norm,flee,setArm,useArmButton,toggleEv,avail,stats,
  scopeGeom,hitTest,retPt,get WEAP(){return WEAP},get BASE(){return BASE},get NODES(){return NODES},get mode(){return mode}}}`;
 
@@ -160,22 +160,27 @@ ok(T.S.supply===1 && T.G.P.hp===mx-40, '補給整備は上限以内で初出撃�
 const old=JSON.parse(JSON.stringify(T.S)); delete old.supply; old.roster[0].crew.gun.lv=4;
 ok(T.norm(old).supply===3 && old.roster[0].crew.gun.lv===4 && old.cleared.includes(6), '旧セーブに補給だけを追加し制圧と乗員を維持する');
 
-// 12) ヘックスの距離・地形・行動制限と作戦への戦果引き継ぎ
-T.newGame(); T.startStage(0,'barrage'); T.startHex(0);
+// 12) 部隊配置から個別のリアルタイム戦へ入り、戦果を盤面に反映する
+T.newGame(); T.startStage(1,'barrage'); T.startHex();
 const x12=T.HX,field=x12.cells;
+ok(x12.allies.length===3 && x12.enemies.length===2 && x12.phase==='deploy', '稼働機と守備隊を同じ盤面に展開する');
 ok(T.hexDistance(field[15],field[19])===4 && T.hexDistance(field[15],field[22])===1, '六角盤の水平距離と斜めの隣接を数える');
-const reach=T.hexReach(field,15,19,2);
-ok(reach.get(16)===2 && !reach.has(10) && !reach.has(19), '林は移動力2、水域と敵のマスには進めない');
-ok(!T.hexFire() && T.hexMove(16) && !T.hexMove(15), '射程外では攻撃できず、移動はターンに一度');
-const openDamage=T.hexDamage(x12.p,x12.e,'R'); field[x12.e.pos].land='woods';
-ok(T.hexDamage(x12.p,x12.e,'R')===Math.round(openDamage*.7), '林にいる機体へのダメージは30%減る');
-ok(T.hexFire() && !T.hexFire() && x12.p.cd.R===2 && T.S.supply===0, '一度だけ攻撃でき、装填と作戦支援が適用される');
+ok(!T.hexMove(16) && T.hexMove(14) && T.hexMove(15), '配置中は味方側の空きマスにだけ移せる');
 T.hexEnd();
-ok(x12.turn===2 && !x12.moved && !x12.fired && x12.p.cd.R===1 && x12.p.hp<x12.p.max, '敵が行動し、次のターンに移動・攻撃を再開できる');
-T.newGame(); T.startStage(0); T.BT.foes[0].hp=1; T.startHex(0); T.hexMove(16); T.hexFire();
-ok(T.HX.done==='win' && T.BT.kills===1 && T.BT.foes[0].hp===0, 'ヘックス戦の撃破を作戦に記録する');
-T.afterDuel();
-ok(T.S.cleared.includes(0) && T.S.supply===4 && T.mode==='result', 'ヘックス戦でも拠点制圧と補給が反映される');
+const u=x12.allies[0],e=x12.enemies[1],reach=T.hexReach(T.hexBoard(0),15,new Set([19]),6);
+ok(reach.get(16)===2 && !reach.has(10) && !reach.has(19), '林は移動力2、水域と占有マスには進めない');
+ok(!T.hexEngage(u,e) && T.hexMove(17) && !T.hexMove(16), '射程外は交戦できず、移動は各機1回まで');
+ok(T.hexEngage(u,e) && T.mode==='battle' && T.G.fo===e.src && T.G.P.src===u.src && T.G.E.x-T.G.P.x===3*420 && T.S.supply===0, '選んだ相手と距離で従来の狙撃戦に入り、補給を消費する');
+T.G.P.hp-=73; T.G.E.hp=0; T.check(); T.afterDuel();
+ok(T.mode==='hex' && T.HX.turn===1 && T.HX.engagement===null && T.hexOccupied().get(e.pos)!==e && u.src.hp===u.max-73 && T.BT.kills===1, '撃破と被害を反映して同じターンの盤面に戻る');
+ok(!T.hexEngage(u,x12.enemies[0]), '同じ味方機は同じターンに再交戦できない');
+T.newGame(); T.startStage(0); T.startHex(); T.hexEnd(); T.hexEnd();
+ok(T.HX.engagement?.enemy && T.mode==='battle', '敵ターンにもリアルタイム狙撃戦が始まる');
+T.G.escaped=true; T.check(); T.afterDuel();
+ok(T.mode==='hex' && T.HX.turn===2 && T.HX.allies.every(u=>!u.moved&&!u.fought), '離脱後も盤面に戻り、敵ターンなら次ターンへ進む');
+T.newGame(); T.startStage(0); T.startHex(); T.hexEnd(); T.hexMove(16); T.hexEngage(T.HX.active,T.HX.enemies[0]);
+T.G.E.hp=0; T.check(); T.afterDuel();
+ok(T.S.cleared.includes(0) && T.S.supply===4 && T.mode==='result', '全守備隊を撃破したら制圧と補給を記録する');
 
 console.log(failed ? `\n${failed}件 失敗` : '\nすべて成功');
 process.exit(failed ? 1 : 0);
