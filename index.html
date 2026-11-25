@@ -84,6 +84,22 @@ header p{margin:0;font-size:14px;opacity:.75}
 .mapgrid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:12px}
 .orderpick{display:grid;gap:3px;margin:8px 0;font-size:14px;font-weight:700}
 .orderpick select{width:100%;min-height:44px;padding:5px 8px;color:var(--lite);background:#1a1e13;border:1px solid var(--edge);border-radius:6px;font:inherit}
+.hexlayout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:12px;align-items:start}
+.hexboard{display:block;width:100%;max-width:660px;margin:auto;background:#22291f;border:1px solid var(--edge);border-radius:6px;touch-action:manipulation}
+.hexcell polygon{fill:#424f3c;stroke:#22291f;stroke-width:1.6}
+.hexcell[data-land="woods"] polygon{fill:#314b3e}.hexcell[data-land="ruins"] polygon{fill:#534d43}.hexcell[data-land="water"] polygon{fill:#34535b}
+.hexcell.move,.hexcell.target{cursor:pointer}.hexcell.move polygon{fill:#536b4b;stroke:#c7df9c}
+.hexcell.target polygon{stroke:#ff9f77;stroke-width:2.5}.hexcell:focus-visible polygon{stroke:#fff1ba;stroke-width:3;outline:none}
+.hexcell .landmark{opacity:.68;pointer-events:none}.hexcell .hexpiece{pointer-events:none}
+.hexsidebar{display:grid;gap:8px;min-width:0}.hexstats{display:grid;gap:7px}.hexstats .bar{margin:2px 0}
+.hexlabels{display:flex;flex-wrap:wrap;gap:5px 10px;margin:6px 0 0;font-size:12px;color:var(--dim)}
+.hexlabels .own{color:#a6e4ac}.hexlabels .enemy{color:#ff9068}
+.hexlog{margin:0;min-height:3.4em}.hexactions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.hexactions .btn{padding:5px;overflow-wrap:anywhere}.hexactions .chosen{border-color:var(--sand);background:#494e32}.hexactions .wide{grid-column:1/-1}
+.hexshot{stroke:#ffe7a6;stroke-width:3;stroke-linecap:round;pointer-events:none;animation:hexflash .38s ease-out both}
+@keyframes hexflash{to{opacity:0}}
+@media(max-width:760px){.hexlayout{grid-template-columns:minmax(0,1fr)}}
+@media(prefers-reduced-motion:reduce){.hexshot{animation:none;opacity:.35}}
 .mapsvg{background:#2a4f5a;border:3px solid var(--edge);border-radius:6px;width:100%;height:auto;max-height:620px;display:block}
 .ed{stroke:#cfc59a;stroke-width:.8;stroke-dasharray:2 1.6;opacity:.45}
 .ed.on{opacity:1;stroke-dasharray:none;stroke:#f0d890}
@@ -152,6 +168,7 @@ summary{cursor:pointer;font-weight:700;min-height:44px;display:flex;align-items:
   </section>
   <section id="map" class="scr" hidden></section>
   <section id="pre" class="scr" hidden></section>
+  <section id="hex" class="scr" hidden></section>
   <section id="hangar" class="scr" hidden></section>
   <section id="result" class="scr" hidden></section>
 </main>
@@ -251,7 +268,7 @@ function sfx(k){if(!AC||muted)return;try{const t=AC.currentTime,P={fire:[1100,.7
  f.frequency.setValueAtTime(P[0],t);f.frequency.exponentialRampToValueAtTime(60,t+P[2]);g.gain.setValueAtTime(P[1],t);g.gain.exponentialRampToValueAtTime(.001,t+P[2]);s.connect(f).connect(g).connect(MASTER);s.start(t,Math.random(),P[2]+.05);
  if(P[3]){const o=AC.createOscillator(),og=AC.createGain();o.frequency.setValueAtTime(P[3],t);o.frequency.exponentialRampToValueAtTime(28,t+P[2]*.8);og.gain.setValueAtTime(.7,t);og.gain.exponentialRampToValueAtTime(.001,t+P[2]);o.connect(og).connect(MASTER);o.start(t);o.stop(t+P[2]+.05)}}catch(_){}}
 /* ================= 画面切替 ================= */
-const SCR=['map','pre','hangar','result'];
+const SCR=['map','pre','hangar','result','hex'];
 let mode='title';
 function go(m){mode=m;$('view').hidden=!(m==='title'||m==='battle');$('tOver').hidden=m!=='title';$('bHud').hidden=m!=='battle';$('bPanel').hidden=m!=='battle';if(m!=='battle')$('bOver').hidden=true;
  SCR.forEach(s=>$(s).hidden=s!==m);if(m==='title'||m==='battle')requestAnimationFrame(fit);window.scrollTo&&m!=='battle'&&window.scrollTo(0,0)}
@@ -304,7 +321,7 @@ $('hangar').addEventListener('click',e=>{const a=e.target.closest('[data-a]');if
  else if(k==='frame'){const nf=$('fs'+i).value,c=BASE[nf].cost-trade(BASE[m.id].cost);if(S.funds>=c){S.funds-=c;const old=BASE[m.id].n;m.id=nf;m.up={armor:0,gun:0,sight:0,legs:0,loader:0};m.hp=stats(m).max;msg=`${old}を下取りに出して${BASE[nf].n}を受領!`}else msg=`資金が足りない(あと${c-S.funds}円)`}
  sfx('clank');save();hangar();if(msg)$('hmsg').textContent=msg});
 /* ================= 拠点戦の流れ ================= */
-let BT=null;
+let BT=null,FIGHT_STYLE='hex';
 function startStage(i,order=''){const replay=S.cleared.includes(i),flank=!replay&&approach(i).length>1;
  const support=Object.hasOwn(SUPPORT,order)&&S.supply>=SUPPORT[order].cost?order:'';
  const armorScale=(flank?.88:1)*(support==='barrage'?.85:1);
@@ -313,11 +330,13 @@ function deploySupport(m,max){if(BT.deployed)return;BT.deployed=true;if(!BT.supp
  S.supply-=SUPPORT[BT.support].cost;if(BT.support==='repair')m.hp=Math.min(max,m.hp+Math.round(max*.3));save()}
 function pre(){go('pre');const nd=NODES[BT.node],alive=BT.foes.filter(f=>f.hp>0),nx=alive[0],F=FOES[nx.t];
  $('pre').innerHTML=`<div class="bar2"><h2>${nd.n} ・ 出撃機を選ぶ</h2><span class="funds">${S.funds} 円</span></div>
+ <label class="orderpick">戦闘方式<select id="fightStyle"><option value="hex" ${FIGHT_STYLE==='hex'?'selected':''}>ヘックス戦（ターン制）</option><option value="action" ${FIGHT_STYLE==='action'?'selected':''}>狙撃戦（リアルタイム）</option></select></label>
  ${BT.flank||BT.support?`<p class="stat">${[BT.flank?'挟撃：守備隊装甲 −12%':'',BT.support?`${SUPPORT[BT.support].n}：${SUPPORT[BT.support].note}${BT.deployed?'（使用済み）':`（出撃時に補給 −${SUPPORT[BT.support].cost}）`}`:''].filter(Boolean).join(' ／ ')}</p>`:''}
  <div class="box"><h3>次の敵：${F.final?'大ボス ':F.boss?'BOSS ':''}${F.n}<small>装甲 ${Math.ceil(nx.hp)} / ${F.hp}</small></h3><div class="foe">${BT.foes.map(f=>`<span class="tag ${f.hp<=0?'dead':f===nx?'next':''} ${FOES[f.t].boss?'boss':''}">${FOES[f.t].final?'大ボス ':FOES[f.t].boss?'BOSS ':''}${FOES[f.t].n}${f.hp>0&&f.hp<FOES[f.t].hp?' (損傷)':''}</span>`).join('')}</div><p class="note">${F.note?F.note:F.art?'遠距離ほど正確な砲撃型。懐に飛び込め。':F.dodge>1?'すばしっこい。照準を溜めるとかわされやすい。':F.sq.length?'随伴歩兵が肉薄攻撃を仕掛けてくる。':'標準的な相手。'}</p></div>
  <div class="cards" style="margin-top:10px">${S.roster.map((m,i)=>{const s=stats(m);return `<button class="mc pick" data-i="${i}" ${m.hp<=0?'disabled':''}><h3>${s.n}<small>${s.type}・${crewTxt(m)}</small></h3><div class="row"><span>装甲</span><b>${m.hp<=0?'大破':Math.ceil(m.hp)+' / '+s.max}</b></div><div class="bar"><i style="width:${m.hp/s.max*100}%;background:${m.hp/s.max<.35?'var(--red)':'var(--hp)'}"></i></div><span class="note">左 ${WEAP[m.wL].n}・右 ${WEAP[m.wR].n}</span><span class="note">分隊：${m.sq.length?m.sq.map(q=>SQ[q.t][0]+'★'+(q.lv||1)+' '+q.men+'名').join('・'):'なし'}</span></button>`}).join('')}</div>
  <div class="row2" style="margin-top:12px"><button class="btn" data-a="retreat">撤退する(資金 -100 円)</button></div>`}
-$('pre').addEventListener('click',e=>{const p=e.target.closest('.pick');if(p&&!p.disabled){sfx('ui');startDuel(+p.dataset.i);return}const a=e.target.closest('[data-a]');if(a&&a.dataset.a==='retreat')stageFail(true)});
+$('pre').addEventListener('change',e=>{if(e.target.id==='fightStyle')FIGHT_STYLE=e.target.value==='action'?'action':'hex'});
+$('pre').addEventListener('click',e=>{const p=e.target.closest('.pick');if(p&&!p.disabled){sfx('ui');(FIGHT_STYLE==='hex'?startHex:startDuel)(+p.dataset.i);return}const a=e.target.closest('[data-a]');if(a&&a.dataset.a==='retreat')stageFail(true)});
 function afterDuel(){if(BT.foes.every(f=>f.hp<=0))stageClear();else if(S.roster.every(m=>m.hp<=0))gameOver();else pre()}
 function gameOver(){const vets=S.roster.map(m=>({crew:m.crew,cn:m.cn,sq:m.sq.map(q=>({t:q.t,lv:q.lv,exp:q.exp,men:MEN}))})),runs=(S.runs||1)+1,reached=S.cleared.length;
  newGame();S.runs=runs;S.funds=400;S.roster.forEach((m,i)=>{m.crew=vets[i].crew;m.cn=vets[i].cn;m.sq=vets[i].sq;m.hp=stats(m).max});save();go('result');
@@ -328,6 +347,81 @@ function stageClear(){const nd=NODES[BT.node],rp=BT.replay,base=rp?Math.round(nd
 function stageFail(vol){S.roster.forEach(m=>{const mx=stats(m).max;if(m.hp<mx*.25)m.hp=Math.round(mx*.25)});S.funds=Math.max(0,S.funds-100);save();go('result');
  $('result').innerHTML=`<div class="box" style="padding:22px 16px"><p class="big">${vol?'撤退':'部隊壊滅・撤退'}</p><p>${vol?'態勢を立て直す。':'全機が動けなくなった。回収班が機体を引きずって戻った。'}拠点の敵は損傷が回復している。修理と改造で出直そう。</p><p class="stat">資金 -100 円 → ${S.funds} 円</p><div class="row2"><button class="btn go" data-a="hangar">格納庫へ</button><button class="btn" data-a="map">作戦地図へ</button></div></div>`}
 $('result').addEventListener('click',e=>{const a=e.target.closest('[data-a]');if(!a)return;sfx('ui');({hangar,map:mapView,title})[a.dataset.a]()});
+/* ================= ヘックス戦 ================= */
+const HEX_W=7,HEX_H=6,HEX_R=22,HEX_D=Math.sqrt(3)*HEX_R;
+const HEX_LAND={plain:['平地',1,1],woods:['林',2,.7],ruins:['廃墟',2,.7],water:['水域',Infinity,1]};
+const HEX_RANGE={std:[1,3],heavy:[1,4],auto:[1,2],how:[2,5],rocket:[1,3],snipe:[2,5],flame:[1,1]};
+const HEX_STENCIL=[['woods',2,0],['ruins',4,0],['water',3,1],['woods',5,1],['woods',2,2],['woods',4,3],['ruins',5,3],['woods',1,4],['water',3,4],['ruins',4,5],['woods',2,5]];
+const HEX_POINTS=Array.from({length:6},(_,i)=>`${Math.sin(i*Math.PI/3)*HEX_R},${-Math.cos(i*Math.PI/3)*HEX_R}`).join(' ');
+let HX=null;
+function hexBoard(variant){const patch=new Map(HEX_STENCIL.map(([land,c,r])=>{
+ const row=variant%2?5-r:r,col=variant%3===2?6-c:c;
+ return [row*HEX_W+col,variant%3===1&&land==='woods'?'ruins':land]}));
+ return Array.from({length:HEX_W*HEX_H},(_,id)=>{const c=id%HEX_W,r=Math.floor(id/HEX_W);
+  return {id,c,r,q:c-(r>>1),land:patch.get(id)||'plain',x:24+(c+(r%2)*.5)*HEX_D,y:24+r*33}})}
+function hexDistance(a,b){const x=a.q-b.q,y=a.r-b.r;return Math.max(Math.abs(x),Math.abs(y),Math.abs(x+y))}
+function hexReach(cells,start,blocked,budget){const best=new Map([[start,0]]),open=new Set([start]);
+ while(open.size){const here=[...open].reduce((a,b)=>best.get(a)<=best.get(b)?a:b);open.delete(here);
+  for(const c of cells){if(c.id===blocked||hexDistance(c,cells[here])!==1)continue;
+   const cost=best.get(here)+HEX_LAND[c.land][1];if(cost<=budget&&cost<(best.get(c.id)??Infinity)){best.set(c.id,cost);open.add(c.id)}}}
+ best.delete(start);return best}
+function hexUnit(def,src,pos,player){return {src,pos,hp:src.hp,max:def.max||def.hp,name:def.n,arms:{L:def.wL,R:def.wR},cd:{L:0,R:0},power:def.dmg*(player?1.5:.82),rmx:def.rmx,mobility:def.speed>=55?3:def.speed>=22?2:1,color:def.col[2]}}
+function startHex(ri){const m=S.roster[ri],s=stats(m),f=BT.foes.find(o=>o.hp>0);
+ deploySupport(m,s.max);G=null;
+ HX={cells:hexBoard(BT.node),p:hexUnit(s,m,15,true),e:hexUnit(FOES[f.t],f,19,false),turn:1,arm:'R',moved:false,fired:false,done:'',last:null,log:[]};
+ go('hex');renderHex()}
+const hexRange=(u,a)=>HEX_RANGE[WEAP[u.arms[a]].fx];
+function hexCanFire(u,t,a,pos=u.pos){const [lo,hi]=hexRange(u,a),d=hexDistance(HX.cells[pos],HX.cells[t.pos]);return u.cd[a]===0&&d>=lo&&d<=hi}
+function hexDamage(u,t,a){const w=WEAP[u.arms[a]],cover=HEX_LAND[HX.cells[t.pos].land][2];return Math.max(1,Math.round(w.dmg*w.shots*(w.burn?4:1)*u.power*cover))}
+function hexLog(text){HX.log.unshift(text);HX.log.length=Math.min(2,HX.log.length)}
+function hexMove(id){const {p,e,cells}=HX;if(HX.done||HX.moved||!hexReach(cells,p.pos,e.pos,p.mobility).has(id))return false;
+ p.pos=id;HX.moved=true;HX.last=null;hexLog(`${p.name}：${HEX_LAND[cells[id].land][0]}へ移動`);renderHex();return true}
+function hexAttack(u,t,a){const w=WEAP[u.arms[a]],d=hexDamage(u,t,a);t.hp=Math.max(0,t.hp-d);
+ u.cd[a]=Math.ceil((u.rmx?.[a]??w.rl)/3);HX.last=[u.pos,t.pos];sfx(w.fx==='how'?'how':w.fx==='heavy'?'heavy':'fire');
+ hexLog(`${w.n}：${t.name}に ${d} ダメージ`);
+ if(u===HX.p){gainCrew(u.src,'ldr',8);gainCrew(u.src,'gun',t.hp?20:55)}
+ if(t===HX.e&&FOES[t.src.t].final&&!t.enraged&&t.hp>0&&t.hp<t.max*.5){t.enraged=true;t.power*=1.22;hexLog('テンカ暴走：攻撃力上昇')}
+ if(!t.hp)hexFinish(u===HX.p?'win':'lose')}
+function hexFire(){const {p,e,arm}=HX;if(HX.done||HX.fired||!hexCanFire(p,e,arm))return false;
+ HX.fired=true;hexAttack(p,e,arm);renderHex();return true}
+function hexEnemy(move){const {p,e,cells}=HX,arms=['L','R'];
+ if(move){const reach=hexReach(cells,e.pos,p.pos,e.mobility),options=[e.pos,...reach.keys()];
+  const score=id=>{const d=hexDistance(cells[id],cells[p.pos]),fire=arms.some(a=>hexCanFire(e,p,a,id));
+   const gap=Math.min(...arms.map(a=>{const [lo,hi]=hexRange(e,a);return Math.max(lo-d,d-hi,0)}));
+   return (fire?20:0)-gap*4+(1-HEX_LAND[cells[id].land][2])*3-d*.15};
+  e.pos=options.reduce((best,id)=>score(id)>score(best)?id:best)}
+ const a=arms.filter(a=>hexCanFire(e,p,a)).sort((a,b)=>hexDamage(e,p,b)-hexDamage(e,p,a))[0];
+ if(a)hexAttack(e,p,a);else if(move)hexLog('敵は発射せず')}
+function hexEnd(){if(HX.done)return;HX.last=null;hexEnemy(true);
+ if(!HX.done){for(const u of [HX.p,HX.e])for(const a of ['L','R'])u.cd[a]=Math.max(0,u.cd[a]-1);HX.turn++;HX.moved=false;HX.fired=false}renderHex()}
+function hexFinish(r){if(HX.done)return;const {p,e}=HX;HX.done=r;recordDuel(p.src,e.src,p.hp,e.hp,r)}
+function hexWithdraw(){if(HX.done)return;HX.last=null;hexEnemy(false);hexFinish('flee');renderHex()}
+function hexPiece(u,enemy){return `<g class="hexpiece" transform="${enemy?'rotate(180)':''}">
+ <ellipse cx="0" cy="5" rx="14" ry="9" fill="#171a16" opacity=".6"/><path d="M-12 -7h6V9h-6zM6 -7h6V9H6z" fill="#282821" stroke="#b0a487"/>
+ <path d="M-12 -4h6m-6 4h6m-6 4h6M6 -4h6M6 0h6M6 4h6" stroke="#746f5b"/><path d="M-7 -8 0 -12 7 -8 6 5 0 8 -6 5Z" fill="${u.color}" stroke="#171a16"/>
+ <path d="M-3 -9H3V3H-3Z" fill="#333630"/><path d="M0 -15V-4" stroke="#d1c5a4" stroke-width="2.5"/></g><circle cx="0" cy="14" r="2.8" fill="${enemy?'#ff9068':'#a6e4ac'}"/>`}
+const HEX_MARK={woods:'<path d="M-12 8 0 -13 12 8ZM2 11 10 -3 18 11Z" fill="#78927a"/>',ruins:'<path d="M-11 10V-7h8v-6h9V0h5v10Z" fill="#9a8a71"/><path d="M-7 -3v5m8 2v6m3-17v5" stroke="#4b443a" stroke-width="2"/>',water:'<path d="M-12 -3q6 -5 12 0t12 0m-24 8q6 -5 12 0t12 0" fill="none" stroke="#91b7bf" stroke-width="2"/>'};
+function renderHex(){const {p,e,cells,arm,done,last}=HX,shoot=!done&&!HX.fired&&hexCanFire(p,e,arm);
+ const reach=done||HX.moved?new Map():hexReach(cells,p.pos,e.pos,p.mobility);
+ const board=cells.map(c=>{const own=c.id===p.pos,enemy=c.id===e.pos,move=reach.has(c.id),target=enemy&&shoot;
+  const label=`${c.c+1}列 ${c.r+1}段 ${HEX_LAND[c.land][0]}${own?' 自機':enemy?' 敵機':''}`;
+  return `<g class="hexcell ${move?'move':target?'target':''}" data-cell="${c.id}" data-land="${c.land}" transform="translate(${c.x} ${c.y})" ${move||target?`role="button" tabindex="0" aria-label="${target?'攻撃':'移動'}：${label}"`:''}><polygon points="${HEX_POINTS}"/><title>${label}</title>${own||enemy?hexPiece(own?p:e,enemy):`<g class="landmark">${HEX_MARK[c.land]||''}</g>`}</g>`}).join('');
+ const stats=(u,label,hue)=>`<div><div class="row"><b>${label} ${u.name}</b><span>${u.hp} / ${u.max}</span></div><div class="bar"><i style="width:${u.hp/u.max*100}%;background:${hue}"></i></div></div>`;
+ const status=done?{win:'勝利',lose:'自機大破',flee:'離脱成功'}[done]:`第 ${HX.turn} ターン`;
+ const trail=last?`<line class="hexshot" x1="${cells[last[0]].x}" y1="${cells[last[0]].y}" x2="${cells[last[1]].x}" y2="${cells[last[1]].y}"/>`:'';
+ const arms=['L','R'].map(a=>{const [lo,hi]=hexRange(p,a);return `<button class="btn ${a===arm?'chosen':''}" data-hex-arm="${a}" aria-pressed="${a===arm}">${a==='L'?'左':'右'} ${WEAP[p.arms[a]].n}<small class="note" style="display:block">射程 ${lo===hi?lo:lo+'–'+hi}${p.cd[a]?' ／ 装填 '+p.cd[a]:''}</small></button>`}).join('');
+ $('hex').innerHTML=`<div class="bar2"><h2>${NODES[BT.node].n} ・ ヘックス戦</h2><span class="stat">${status}</span></div><div class="hexlayout">
+ <div><svg class="hexboard" viewBox="0 0 297 213" aria-label="六角マス戦場">${board}${trail}</svg><div class="hexlabels"><span class="own">● 自機</span><span class="enemy">● 敵機</span><span>林・廃墟：被ダメージ −30%</span><span>水域：通行不可</span></div></div>
+ <aside class="hexsidebar"><div class="hexstats">${stats(p,'自機','#a6e4ac')}${stats(e,'敵機','#ff9068')}</div>
+ <div class="row"><span>距離 ${hexDistance(cells[p.pos],cells[e.pos])} マス</span><span>${HX.moved?'移動済':'移動 '+p.mobility} ／ ${HX.fired?'攻撃済':'攻撃 1'}</span></div>
+ <div class="hexactions">${done?'<button class="btn go wide" data-hex-act="next">次へ</button>':`${arms}<button class="btn go wide" data-hex-act="fire" ${shoot?'':'disabled'}>攻撃${shoot?' ・ '+hexDamage(p,e,arm):''}</button><button class="btn" data-hex-act="end">ターン終了</button><button class="btn" data-hex-act="withdraw">戦闘離脱</button>`}</div>
+ <p class="note hexlog" aria-live="polite">${HX.log.join('<br>')}</p></aside></div>`}
+function hexTap(id){if(HX.done)return;if(id===HX.e.pos)hexFire();else hexMove(id)}
+function hexFocus(){const root=$('hex');(root.querySelector('[data-hex-act=next], [data-hex-act=fire]:not(:disabled)')||root.querySelector('[data-hex-act=end]'))?.focus()}
+$('hex').addEventListener('click',ev=>{if(mode!=='hex')return;const a=ev.target.closest('[data-hex-arm]'),op=ev.target.closest('[data-hex-act]'),cell=ev.target.closest('[data-cell]');
+ if(a&&!HX.done){HX.arm=a.dataset.hexArm;renderHex();$('hex').querySelector(`[data-hex-arm=${HX.arm}]`).focus()}
+ else if(op){({fire:hexFire,end:hexEnd,withdraw:hexWithdraw,next:afterDuel})[op.dataset.hexAct]();if(mode==='hex'&&ev.detail===0)hexFocus()}else if(cell)hexTap(Number(cell.dataset.cell))});
+$('hex').addEventListener('keydown',ev=>{const cell=ev.target.closest('[data-cell][tabindex]');if(cell&&(ev.key==='Enter'||ev.key===' ')){ev.preventDefault();hexTap(Number(cell.dataset.cell));hexFocus()}});
 /* ================= 戦闘 ================= */
 const cv=$('cv'),ctx=cv.getContext('2d');
 let W=800,H=340,S0=1,GY=290,LIMIT=120;
@@ -469,9 +563,9 @@ function step(dt){G.t+=dt;ai(dt);scopeStep(dt);
  G.shots=G.shots.filter(s=>{s.t+=dt;if(!s.launched&&s.t>=0){s.launched=1;launchFx(s)}if(s.rk&&Math.random()<.6){const p=Math.max(0,s.t/s.T);G.parts.push({k:'smoke',x:s.from.x+(s.to.x-s.from.x)*p,y:12+Math.sin(Math.PI*p)*30,vx:0,vy:4,r:4,l:.7,m:.7,c:'#d8d0bc'})}if(s.t>=s.T){land(s);if(G.follow&&s===G.follow.last){G.follow.hold=.9;G.follow.hx=s.to.x}return false}return true});
  G.mg+=dt;if(G.mg>=1){G.mg=0;if(dist()<180)for(const u of [G.P,G.E])if(u.hp>0&&Math.random()<.35&&killMen(foe(u),1))say(`機銃で${u===G.P?'敵':'味方'}歩兵1名負傷`,'w')}
  check()}
+function recordDuel(m,f,ownHP,enemyHP,r){m.hp=Math.round(ownHP);f.hp=Math.round(enemyHP);if(r!=='lose')gainCrew(m,'drv',r==='flee'?18:10);if(r==='win')BT.kills++;save()}
 function check(){if(!G.run)return;const P=G.P,E=G.E;let r=null;if(E.hp<=0)r='win';else if(P.hp<=0)r='lose';else if(G.escaped)r='flee';else if(G.t>=LIMIT)r='time';if(!r)return;
- G.run=false;G.over=true;P.dir=0;if(!G.wreck&&(r==='win'||r==='lose'))wreckFx(r==='win'?E:P);const m=G.P.src,f=G.fo;m.hp=Math.round(P.hp);f.hp=Math.round(E.hp);
- if(r!=='lose')gainCrew(m,'drv',r==='flee'?18:10);const ups=G.ups;if(r==='win')BT.kills++;save();
+ G.run=false;G.over=true;P.dir=0;if(!G.wreck&&(r==='win'||r==='lose'))wreckFx(r==='win'?E:P);recordDuel(P.src,G.fo,P.hp,E.hp,r);const ups=G.ups;
  const M={win:['勝利!',`${E.name}を撃破。`],lose:[`${P.name} 大破`,'機体は回収された。格納庫で修理するまで出撃できない。'],time:['時間切れ','決着つかず。損傷はそのまま持ち越し。'],flee:['離脱成功','背中に弾を浴びながらも戦場を抜けた。損傷はそのまま持ち越し。']}[r];
  setTimeout(()=>{const o=$('bOver');o.hidden=false;o.innerHTML=`<div><h2>${M[0]}</h2><p>${M[1]}</p>${ups.length?`<p class="stat">${ups.join('<br>')}</p>`:''}<button class="btn go" data-a="next" style="min-width:200px">次へ</button></div>`},r==='time'?300:1500)}
 $('bOver').addEventListener('click',e=>{const a=e.target.closest('[data-a]');if(!a)return;sfx('ui');if(a.dataset.a==='next')afterDuel();else if(a.dataset.a==='resume')pause()});

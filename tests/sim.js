@@ -10,6 +10,7 @@ const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
 let js = scripts[scripts.length - 1][1].trimEnd();
 // スクリプト全体は { ... } のブロック。最後の } の直前にテスト用の出口を差し込む
 js = js.slice(0, -1) + `;globalThis.T={get S(){return S},get G(){return G},get BT(){return BT},
+ get HX(){return HX},startHex,hexDistance,hexBoard,hexReach,hexMove,hexDamage,hexFire,hexEnd,
  startStage,startDuel,step,draw,hud,act,hit,afterDuel,mapView,hangar,pre,newGame,norm,flee,setArm,useArmButton,toggleEv,avail,stats,
  scopeGeom,hitTest,retPt,get WEAP(){return WEAP},get BASE(){return BASE},get NODES(){return NODES},get mode(){return mode}}}`;
 
@@ -158,6 +159,23 @@ T.startStage(7,'repair'); T.startDuel(0); unit.hp-=40; T.startDuel(0);
 ok(T.S.supply===1 && T.G.P.hp===mx-40, '補給整備は上限以内で初出撃機のみ修理する');
 const old=JSON.parse(JSON.stringify(T.S)); delete old.supply; old.roster[0].crew.gun.lv=4;
 ok(T.norm(old).supply===3 && old.roster[0].crew.gun.lv===4 && old.cleared.includes(6), '旧セーブに補給だけを追加し制圧と乗員を維持する');
+
+// 12) ヘックスの距離・地形・行動制限と作戦への戦果引き継ぎ
+T.newGame(); T.startStage(0,'barrage'); T.startHex(0);
+const x12=T.HX,field=x12.cells;
+ok(T.hexDistance(field[15],field[19])===4 && T.hexDistance(field[15],field[22])===1, '六角盤の水平距離と斜めの隣接を数える');
+const reach=T.hexReach(field,15,19,2);
+ok(reach.get(16)===2 && !reach.has(10) && !reach.has(19), '林は移動力2、水域と敵のマスには進めない');
+ok(!T.hexFire() && T.hexMove(16) && !T.hexMove(15), '射程外では攻撃できず、移動はターンに一度');
+const openDamage=T.hexDamage(x12.p,x12.e,'R'); field[x12.e.pos].land='woods';
+ok(T.hexDamage(x12.p,x12.e,'R')===Math.round(openDamage*.7), '林にいる機体へのダメージは30%減る');
+ok(T.hexFire() && !T.hexFire() && x12.p.cd.R===2 && T.S.supply===0, '一度だけ攻撃でき、装填と作戦支援が適用される');
+T.hexEnd();
+ok(x12.turn===2 && !x12.moved && !x12.fired && x12.p.cd.R===1 && x12.p.hp<x12.p.max, '敵が行動し、次のターンに移動・攻撃を再開できる');
+T.newGame(); T.startStage(0); T.BT.foes[0].hp=1; T.startHex(0); T.hexMove(16); T.hexFire();
+ok(T.HX.done==='win' && T.BT.kills===1 && T.BT.foes[0].hp===0, 'ヘックス戦の撃破を作戦に記録する');
+T.afterDuel();
+ok(T.S.cleared.includes(0) && T.S.supply===4 && T.mode==='result', 'ヘックス戦でも拠点制圧と補給が反映される');
 
 console.log(failed ? `\n${failed}件 失敗` : '\nすべて成功');
 process.exit(failed ? 1 : 0);
