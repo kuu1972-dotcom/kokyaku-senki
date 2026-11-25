@@ -10,7 +10,7 @@ const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
 let js = scripts[scripts.length - 1][1].trimEnd();
 // スクリプト全体は { ... } のブロック。最後の } の直前にテスト用の出口を差し込む
 js = js.slice(0, -1) + `;globalThis.T={get S(){return S},get G(){return G},get BT(){return BT},
- startStage,startDuel,step,draw,hud,act,hit,afterDuel,mapView,hangar,pre,newGame,flee,setArm,useArmButton,toggleEv,avail,stats,
+ startStage,startDuel,step,draw,hud,act,hit,afterDuel,mapView,hangar,pre,newGame,norm,flee,setArm,useArmButton,toggleEv,avail,stats,
  scopeGeom,hitTest,retPt,get WEAP(){return WEAP},get BASE(){return BASE},get NODES(){return NODES},get mode(){return mode}}}`;
 
 // ---- ブラウザの代わり(何もしない偽物) ----
@@ -138,6 +138,26 @@ T.useArmButton('R');
 ok(fired===T.WEAP[p10.wR].shots && T.G.shots.every(s=>s.w===p10.wR) && T.G.shots.length===fired && !p10.aiming, '同じ腕で発射し、装填中は再発射しない');
 T.useArmButton('L'); T.useArmButton('R');
 ok(p10.arm==='L' && p10.aiming && T.G.shots.length===fired, '反対の腕は発射可能で、装填中の腕を押しても照準は続く');
+
+// 11) 分岐からの挟撃と補給の加算・消費
+T.newGame(); T.S.cleared=[0,1,2,3]; T.S.at=3;
+ok(T.avail().includes(4) && T.avail().includes(5), '片側を制圧したあとも別ルートと合流先を選べる');
+T.startStage(5); const defense=T.BT.foes.map(f=>f.hp);
+T.S.cleared.push(4); T.startStage(5,'barrage');
+ok(T.BT.flank && T.BT.foes.every((f,i)=>f.hp===Math.round(defense[i]*.88*.85)) && T.S.supply===3, '両ルートと支援砲撃が守備隊に反映され、出撃前は補給を消費しない');
+T.startDuel(0); T.startDuel(1);
+ok(T.S.supply===0, '支援砲撃は作戦の初出撃で1回だけ消費する');
+T.startStage(6,'barrage');
+ok(!T.BT.support, '補給不足の支援は適用しない');
+T.BT.foes.forEach(f=>{f.hp=0}); T.afterDuel();
+ok(T.S.supply===3, '飛行場の初制圧で補給を3獲得する');
+T.startStage(6); T.BT.foes.forEach(f=>{f.hp=0}); T.afterDuel();
+ok(T.S.supply===3, '再戦では補給を獲得しない');
+const unit=T.S.roster[0],mx=T.stats(unit).max; unit.hp=mx-100;
+T.startStage(7,'repair'); T.startDuel(0); unit.hp-=40; T.startDuel(0);
+ok(T.S.supply===1 && T.G.P.hp===mx-40, '補給整備は上限以内で初出撃機のみ修理する');
+const old=JSON.parse(JSON.stringify(T.S)); delete old.supply; old.roster[0].crew.gun.lv=4;
+ok(T.norm(old).supply===3 && old.roster[0].crew.gun.lv===4 && old.cleared.includes(6), '旧セーブに補給だけを追加し制圧と乗員を維持する');
 
 console.log(failed ? `\n${failed}件 失敗` : '\nすべて成功');
 process.exit(failed ? 1 : 0);
