@@ -10,7 +10,7 @@ const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
 let js = scripts[scripts.length - 1][1].trimEnd();
 // スクリプト全体は { ... } のブロック。最後の } の直前にテスト用の出口を差し込む
 js = js.slice(0, -1) + `;globalThis.T={get S(){return S},get G(){return G},get BT(){return BT},
- get HX(){return HX},startHex,hexDistance,hexBoard,hexReach,hexMove,hexEngage,hexOccupied,hexEnd,check,
+ get HX(){return HX},get FOES(){return FOES},get HEX_LAND(){return HEX_LAND},hexInRange,hexBand,startHex,hexDistance,hexBoard,hexReach,hexMove,hexEngage,hexOccupied,hexEnd,check,
  startStage,startDuel,step,draw,hud,act,hit,afterDuel,mapView,hangar,pre,newGame,norm,flee,setArm,useArmButton,toggleEv,avail,stats,
  scopeGeom,hitTest,retPt,get WEAP(){return WEAP},get BASE(){return BASE},get NODES(){return NODES},get mode(){return mode}}}`;
 
@@ -58,7 +58,8 @@ for (let guard = 0; guard < 400 && !T.S.done; guard++) {
   const av = T.avail(); if (!av.length) break;
   T.startStage(av[0]);
   while (T.mode === 'pre') { T.startDuel(T.S.roster.findIndex(m => m.hp > 0)); fight(); T.afterDuel(); }
-  T.S.funds += 2000; T.S.roster.forEach(m => { m.hp = T.stats(m).max; }); T.hangar();
+  // 格納庫で改造を進める(ボス戦には改造が要る想定)。1拠点ごとに1段ずつ
+  T.S.funds += 2000; T.S.roster.forEach(m => { const k = Object.keys(m.up).find(k => m.up[k] < 3); if (k) m.up[k]++; m.hp = T.stats(m).max; }); T.hangar();
 }
 ok(T.S.done, `全${T.NODES.length}拠点の作戦を最後まで通せる`);
 
@@ -161,6 +162,7 @@ const old=JSON.parse(JSON.stringify(T.S)); delete old.supply; old.roster[0].crew
 ok(T.norm(old).supply===3 && old.roster[0].crew.gun.lv===4 && old.cleared.includes(6), '旧セーブに補給だけを追加し制圧と乗員を維持する');
 
 // 12) 部隊配置から個別のリアルタイム戦へ入り、戦果を盤面に反映する
+const ito=T.NODES[1]; T.NODES[1]={...ito,hex:undefined,foes:['light','heavy']};
 T.newGame(); T.startStage(1,'barrage'); T.startHex();
 const x12=T.HX,field=x12.cells;
 ok(x12.allies.length===3 && x12.enemies.length===2 && x12.phase==='deploy', '稼働機と守備隊を同じ盤面に展開する');
@@ -168,12 +170,13 @@ ok(T.hexDistance(field[15],field[19])===4 && T.hexDistance(field[15],field[22])=
 ok(!T.hexMove(16) && T.hexMove(14) && T.hexMove(15), '配置中は味方側の空きマスにだけ移せる');
 T.hexEnd();
 const u=x12.allies[0],e=x12.enemies[1],reach=T.hexReach(T.hexBoard(0),15,new Set([19]),6);
-ok(reach.get(16)===2 && !reach.has(10) && !reach.has(19), '林は移動力2、水域と占有マスには進めない');
+ok(reach.get(16)===3 && reach.get(14)===2 && !reach.has(10) && !reach.has(19), '平地2・林3を消費し、水域と占有マスには進めない');
 ok(!T.hexEngage(u,e) && T.hexMove(17) && !T.hexMove(16), '射程外は交戦できず、移動は各機1回まで');
 ok(T.hexEngage(u,e) && T.mode==='battle' && T.G.fo===e.src && T.G.P.src===u.src && T.G.E.x-T.G.P.x===3*420 && T.S.supply===0, '選んだ相手と距離で従来の狙撃戦に入り、補給を消費する');
 T.G.P.hp-=73; T.G.E.hp=0; T.check(); T.afterDuel();
 ok(T.mode==='hex' && T.HX.turn===1 && T.HX.engagement===null && T.hexOccupied().get(e.pos)!==e && u.src.hp===u.max-73 && T.BT.kills===1, '撃破と被害を反映して同じターンの盤面に戻る');
 ok(!T.hexEngage(u,x12.enemies[0]), '同じ味方機は同じターンに再交戦できない');
+T.NODES[1]=ito;
 T.newGame(); T.startStage(0); T.startHex(); T.hexEnd(); T.hexEnd();
 ok(T.HX.engagement?.enemy && T.mode==='battle', '敵ターンにもリアルタイム狙撃戦が始まる');
 T.G.escaped=true; T.check(); T.afterDuel();
@@ -181,6 +184,27 @@ ok(T.mode==='hex' && T.HX.turn===2 && T.HX.allies.every(u=>!u.moved&&!u.fought),
 T.newGame(); T.startStage(0); T.startHex(); T.hexEnd(); T.hexMove(16); T.hexEngage(T.HX.active,T.HX.enemies[0]);
 T.G.E.hp=0; T.check(); T.afterDuel();
 ok(T.S.cleared.includes(0) && T.S.supply===4 && T.mode==='result', '全守備隊を撃破したら制圧と補給を記録する');
+
+// 13) 糸満は専用の大戦略風マップ。地形の防御・丘陵の射程・司令部占領
+T.newGame(); T.S.cleared=[0]; T.startStage(1); T.startHex();
+const ix=T.HX,cellAt=(c,r)=>ix.cells[r*13+c];
+ok(ix.map && ix.cells.length===130 && ix.allies.length===3 && ix.enemies.length===4 && ix.hq===cellAt(2,3).id, '糸満は13×10の専用盤に味方3機・敵4機・敵司令部を置く');
+ok(ix.allies.every(u=>ix.cells[u.pos].r>=8) && !T.hexMove(cellAt(6,5).id) && T.hexMove(cellAt(7,9).id), '配置は南側の段だけ');
+T.hexMove(cellAt(6,8).id); T.hexEnd();
+const road=T.hexReach(ix.cells,cellAt(5,9).id,new Set(),5);
+ok(road.get(cellAt(5,8).id)===1 && road.has(cellAt(5,5).id) && !T.hexReach(ix.cells,cellAt(9,9).id,new Set(),5).has(cellAt(9,6).id), '道路は速く、キビ畑は遅い');
+const art=ix.enemies.find(e=>e.src.t==='art');
+ok(ix.cells[art.pos].land==='hill' && T.hexBand(art,6,art.pos) && !T.hexBand(art,6,cellAt(6,4).id), '丘陵の砲は射程+1');
+{const a=ix.allies[0],e=ix.enemies[0];a.pos=cellAt(4,3).id;e.pos=cellAt(6,3).id;a.moved=true;ix.active=a;
+ ok(T.hexEngage(a,e) && T.G.P.cover===.8 && T.G.E.cover===1, '交戦時に地形の被害倍率を引き継ぐ');
+ const before=T.G.P.hp; T.hit(T.G.E,T.G.P,100,'body',0); ok(before-T.G.P.hp===80, '市街にいると被害が2割減る');
+ T.G.E.hp=0; T.check(); T.afterDuel();}
+{const a=ix.allies[1];ix.active=a;a.moved=false;a.pos=cellAt(3,4).id;ix.enemies.forEach(e=>{if(e.pos===ix.hq)e.pos=cellAt(9,9).id});
+ const held=ix.enemies.find(e=>e.hold&&e.src.t==='heavy'); if(held)held.pos=cellAt(4,1).id;
+ ok(T.hexMove(ix.hq) && T.mode==='result' && T.S.cleared.includes(1), '敵司令部を占領すれば敵が残っていても制圧');}
+T.newGame(); T.S.cleared=[0]; T.startStage(1); T.startHex(); T.hexEnd(); T.hexEnd();
+ok(T.HX.enemies.find(e=>e.src.t==='art').pos===cellAt(11,1).id && T.HX.enemies.find(e=>e.src.t==='heavy').pos===cellAt(3,2).id, '守備型は味方が近づくまで持ち場を動かない');
+ok(T.FOES.bossA.hp>=1800 && T.FOES.final.hp>=5000, 'ボスは装甲を厚くした');
 
 console.log(failed ? `\n${failed}件 失敗` : '\nすべて成功');
 process.exit(failed ? 1 : 0);

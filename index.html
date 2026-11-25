@@ -87,11 +87,14 @@ header p{margin:0;font-size:14px;opacity:.75}
 .hexlayout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:12px;align-items:start}
 .hexboard{display:block;width:100%;max-width:660px;margin:auto;background:#22291f;border:1px solid var(--edge);border-radius:6px;touch-action:manipulation}
 .hexcell polygon{fill:#424f3c;stroke:#22291f;stroke-width:1.6}
-.hexcell[data-land="woods"] polygon{fill:#314b3e}.hexcell[data-land="ruins"] polygon{fill:#534d43}.hexcell[data-land="water"] polygon{fill:#34535b}
+.hexcell[data-land="woods"] polygon{fill:#314b3e}.hexcell[data-land="road"] polygon{fill:#5a5a44}.hexcell[data-land="cane"] polygon{fill:#4f5c33}.hexcell[data-land="town"] polygon{fill:#5e5546}.hexcell[data-land="port"] polygon{fill:#55574e}.hexcell[data-land="hq"] polygon{fill:#6a4a3c}.hexcell[data-land="hill"] polygon{fill:#5c5238}.hexcell[data-land="beach"] polygon{fill:#7d7458}.hexcell[data-land="ruins"] polygon{fill:#534d43}.hexcell[data-land="water"] polygon{fill:#34535b}
 .hexcell.move,.hexcell.target,.hexcell.select{cursor:pointer}.hexcell.move polygon{fill:#536b4b;stroke:#c7df9c}
 .hexcell.active polygon{stroke:#a6e4ac;stroke-width:2.5}
 .hexcell.target polygon{stroke:#ff9f77;stroke-width:2.5}.hexcell:focus-visible polygon{stroke:#fff1ba;stroke-width:3;outline:none}
 .hexcell .landmark{opacity:.68;pointer-events:none}.hexcell .hexpiece{pointer-events:none}
+.sp-only{display:none}@media(max-width:760px){.sp-only{display:inline}}
+.hexscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}.hexboard.wide{max-width:none;min-width:560px}
+.hexname{font-size:11px;font-weight:700;fill:#f0e2b8;paint-order:stroke;stroke:#1a1e15;stroke-width:3px;pointer-events:none;text-anchor:middle}.hexname.sea{fill:#a9cdd4;font-size:12px;letter-spacing:2px}
 .hexsidebar{display:grid;gap:8px;min-width:0}.hexunits{display:grid;gap:5px}.hexunits .btn{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;text-align:left}.hexunits .chosen{border-color:var(--sand);background:#494e32}.hexunits small{font-size:12px}
 .hexlabels{display:flex;flex-wrap:wrap;gap:5px 10px;margin:6px 0 0;font-size:12px;color:var(--dim)}
 .hexlabels .own{color:#a6e4ac}.hexlabels .enemy{color:#ff9068}
@@ -205,10 +208,10 @@ const FOES={
  light:{n:'軽歩行車 ハヤテ',hp:560,dmg:.8,aimSpd:42,reload:3.4,speed:60,pref:700,dodge:1.3,col:['#6f7468','#4a4e45','#a3a898'],size:.85,hull:'lite',wL:'auto',wR:'auto',sq:[]},
  heavy:{n:'重歩行車 イワオ',hp:950,dmg:1.05,aimSpd:30,reload:4.8,speed:34,pref:950,dodge:.3,col:['#6c6e71','#46484c','#a0a2a6'],size:1.05,hull:'std',wL:'cannon',wR:'cannon',sq:[{t:'assault',men:6}]},
  art:{n:'自走歩行砲 トドロキ',hp:650,dmg:1.35,aimSpd:24,reload:6,speed:24,pref:1950,dodge:0,art:1,col:['#7a6a52','#54493a','#a8977a'],size:1,hull:'heavy',wL:'how',wR:'how',sq:[]},
- boss:{boss:1,note:'名護を守る指揮型。噴進砲と長砲身で攻守に隙がない。',n:'指揮型 クロガネ',hp:1600,dmg:1.2,aimSpd:34,reload:4.2,speed:36,pref:1050,dodge:.6,col:['#3e3f44','#26272b','#6a6c74'],size:1.22,hull:'wedge',wL:'rocket',wR:'lcannon',sq:[{t:'assault',men:7},{t:'repair',men:6}]},
- bossA:{boss:1,note:'那覇港の守護者。両腕のガトリングで弾幕を張る。すばしっこさは無いが手数が多い。',n:'港湾守備型 ガンテツ',hp:1150,dmg:1.05,aimSpd:40,reload:3.2,speed:40,pref:800,dodge:.4,col:['#4a5446','#2e352c','#7c8a74'],size:1.25,hull:'heavy',wL:'auto',wR:'auto',sq:[{t:'assault',men:7}]},
- bossB:{boss:1,art:1,note:'嘉手納の移動砲台。遠いほど正確な榴弾砲2門。懐に飛び込め。',n:'移動砲台 ライデン',hp:1550,dmg:1.5,aimSpd:26,reload:5.4,speed:22,pref:2100,dodge:0,col:['#6e6248','#4a4130','#a2916e'],size:1.32,hull:'heavy',wL:'how',wR:'how',sq:[{t:'repair',men:6}]},
- final:{boss:1,final:1,note:'辺戸岬の大要塞。装甲が厚く、半分まで削ると暴走して攻撃が激しくなる。',n:'大要塞 テンカ',hp:3200,dmg:1.4,aimSpd:32,reload:4.2,speed:24,pref:1200,dodge:.2,col:['#3a2e2a','#221a18','#7a5a4a'],size:1.6,hull:'heavy',wL:'rocket',wR:'lcannon',sq:[{t:'assault',men:8},{t:'repair',men:8}]}};
+ boss:{boss:1,note:'名護を守る指揮型。噴進砲と長砲身で攻守に隙がない。',n:'指揮型 クロガネ',hp:2700,dmg:1.5,aimSpd:46,reload:3.4,speed:38,pref:1050,dodge:.9,col:['#3e3f44','#26272b','#6a6c74'],size:1.22,hull:'wedge',wL:'rocket',wR:'lcannon',sq:[{t:'assault',men:7},{t:'repair',men:6}]},
+ bossA:{boss:1,note:'那覇港の守護者。両腕のガトリングで弾幕を張る。すばしっこさは無いが手数が多い。',n:'港湾守備型 ガンテツ',hp:1900,dmg:1.3,aimSpd:50,reload:2.6,speed:40,pref:800,dodge:.4,col:['#4a5446','#2e352c','#7c8a74'],size:1.25,hull:'heavy',wL:'auto',wR:'auto',sq:[{t:'assault',men:7}]},
+ bossB:{boss:1,art:1,note:'嘉手納の移動砲台。遠いほど正確な榴弾砲2門。懐に飛び込め。',n:'移動砲台 ライデン',hp:2500,dmg:1.8,aimSpd:34,reload:4.6,speed:22,pref:2100,dodge:0,col:['#6e6248','#4a4130','#a2916e'],size:1.32,hull:'heavy',wL:'how',wR:'how',sq:[{t:'repair',men:6}]},
+ final:{boss:1,final:1,note:'辺戸岬の大要塞。装甲が厚く、半分まで削ると暴走して攻撃が激しくなる。',n:'大要塞 テンカ',hp:5200,dmg:1.75,aimSpd:40,reload:3.4,speed:24,pref:1200,dodge:.2,col:['#3a2e2a','#221a18','#7a5a4a'],size:1.6,hull:'heavy',wL:'rocket',wR:'lcannon',sq:[{t:'assault',men:8},{t:'repair',men:8}]}};
 const UPG={armor:['追加装甲','最大装甲 +15%'],gun:['火器強化','両腕の威力 +12%'],sight:['照準器','照準速度 +15%'],legs:['脚部強化','移動 +15%'],loader:['自動装填機','装填 -10%']};
 const UCOST=[120,220,360];
 const SQ={assault:['突撃分隊','230m以内で肉薄、脚を壊す',14],repair:['整備分隊','止まっている間に装甲修理',20],smoke:['煙幕分隊','8秒間、敵の命中を大幅に下げる',18],rocket:['対戦車噴進班','600m以内で噴進弾(1戦1回)',999]};
@@ -216,7 +219,7 @@ const SQCOST=90,MEN=6;
 const PART={body:['胴体',1],legs:['脚部',.82],gun:['腕の火器',.68]};
 const NODES=[
  {n:'喜屋武岬',prop:'beach',x:37,y:157,to:[1],foes:['light'],pay:150,sky:0},
- {n:'糸満',prop:'port',x:31,y:148,to:[2],foes:['light','heavy'],pay:200,sky:1},
+ {n:'糸満',prop:'port',x:31,y:148,to:[2],foes:['light','heavy','light','art'],pay:280,sky:1,hex:'itoman'},
  {n:'那覇',prop:'port',x:30,y:136,to:[3,4],foes:['light','heavy','bossA'],pay:450,sky:0,boss:1},
  {n:'首里',lr:1,prop:'town',x:39,y:130,to:[5],foes:['heavy','art'],pay:280,sky:2},
  {n:'浦添',prop:'town',x:32,y:126,to:[5],foes:['light','light','heavy'],pay:280,sky:1},
@@ -345,7 +348,25 @@ function stageFail(vol){S.roster.forEach(m=>{const mx=stats(m).max;if(m.hp<mx*.2
 $('result').addEventListener('click',e=>{const a=e.target.closest('[data-a]');if(!a)return;sfx('ui');({hangar,map:mapView,title})[a.dataset.a]()});
 /* ================= ヘックス戦 ================= */
 const HEX_W=7,HEX_H=6,HEX_R=22,HEX_D=Math.sqrt(3)*HEX_R;
-const HEX_LAND={plain:['平地',1,1],woods:['林',2,.7],ruins:['廃墟',2,.7],water:['水域',Infinity,1]};
+/* 地形：[名前, 移動コスト, 被害倍率(小さいほど硬い), 射程ボーナス]。平地=2、道路=1 */
+const HEX_LAND={plain:['平地',2,1,0],road:['道路',1,1,0],beach:['砂浜',3,1.1,0],cane:['キビ畑',3,.9,0],town:['市街',2,.8,0],port:['漁港',2,.85,0],
+ hq:['敵司令部',2,.75,0],hill:['丘陵',3,.85,1],woods:['林',3,.85,0],ruins:['廃墟',3,.8,0],water:['水域',Infinity,1,0]};
+const HEX_CH={'.':'plain','=':'road',b:'beach',c:'cane',T:'town',P:'port',H:'hq',h:'hill',w:'woods',r:'ruins','~':'water'};
+/* 拠点専用の作戦盤。grid は上が北、左が西(海)。deploy は味方の配置可能な段 */
+const HEX_MAPS={itoman:{grid:[
+ '~~~bT=.cchhhh',
+ '~~bTT=.cc.hhh',
+ '~~PTT=..c.whh',
+ '~~HTT=====..h',
+ '~~PTr=.cc...w',
+ '~~bb.=.ccc.w.',
+ '~~~b.=..cc...',
+ '~~~b.=.w..cc.',
+ '~~~~b=.......',
+ '~~~~b=..r....'],deploy:8,allies:[[6,8],[8,9],[10,8]],
+ foes:[{c:6,r:4},{c:3,r:2,hold:1},{c:8,r:6},{c:11,r:1,hold:1}],
+ labels:[['東シナ海',0.6,6.2,1],['糸満漁港',1.3,3.9],['糸満市街',4,0.1],['南部丘陵',11,-0.1],['キビ畑',8.3,5.6],['↑ 那覇方面',5.6,-0.75],['喜屋武方面 ↓',5.5,9.95]],
+ tip:'道路は速い・市街と森は被害減・丘陵は射程+1・敵司令部(糸満漁港)を占領すれば勝利'}};
 const HEX_RANGE={std:[1,3],heavy:[1,4],auto:[1,2],how:[2,5],rocket:[1,3],snipe:[2,5],flame:[1,1]};
 const HEX_STENCIL=[['woods',2,0],['ruins',4,0],['water',3,1],['woods',5,1],['woods',2,2],['woods',4,3],['ruins',5,3],['woods',1,4],['water',3,4],['ruins',4,5],['woods',2,5]];
 const HEX_POINTS=Array.from({length:6},(_,i)=>`${Math.sin(i*Math.PI/3)*HEX_R},${-Math.cos(i*Math.PI/3)*HEX_R}`).join(' ');
@@ -355,6 +376,9 @@ function hexBoard(variant){const patch=new Map(HEX_STENCIL.map(([land,c,r])=>{
  return [row*HEX_W+col,variant%3===1&&land==='woods'?'ruins':land]}));
  return Array.from({length:HEX_W*HEX_H},(_,id)=>{const c=id%HEX_W,r=Math.floor(id/HEX_W);
   return {id,c,r,q:c-(r>>1),land:patch.get(id)||'plain',x:24+(c+(r%2)*.5)*HEX_D,y:24+r*33}})}
+function hexMapBoard(def){const w=def.grid[0].length;
+ return def.grid.flatMap((row,r)=>[...row].map((ch,c)=>({id:r*w+c,c,r,q:c-(r>>1),land:HEX_CH[ch],x:24+(c+(r%2)*.5)*HEX_D,y:24+r*33})))}
+const hexLand=id=>HEX_LAND[HX.cells[id].land];
 function hexDistance(a,b){const x=a.q-b.q,y=a.r-b.r;return Math.max(Math.abs(x),Math.abs(y),Math.abs(x+y))}
 function hexReach(cells,start,blocked,budget){const best=new Map([[start,0]]),open=new Set([start]);
  while(open.size){const here=[...open].reduce((a,b)=>best.get(a)<=best.get(b)?a:b);open.delete(here);
@@ -362,34 +386,44 @@ function hexReach(cells,start,blocked,budget){const best=new Map([[start,0]]),op
    const cost=best.get(here)+HEX_LAND[c.land][1];if(cost<=budget&&cost<(best.get(c.id)??Infinity)){best.set(c.id,cost);open.add(c.id)}}}
  best.delete(start);return best}
 function hexUnit(def,src,pos,ix,enemy){return {src,pos,ix,enemy,name:def.n,max:def.max||def.hp,arms:[def.wL,def.wR],
- mobility:def.speed>=55?3:def.speed>=22?2:1,color:def.col[2],moved:false,fought:false}}
-function startHex(){const allies=S.roster.flatMap((m,i)=>m.hp>0?[hexUnit(stats(m),m,[15,22,29][i],i,false)]:[]);
+ mobility:def.speed>=55?7:def.speed>=22?5:3,hold:0,color:def.col[2],moved:false,fought:false}}
+function startHex(){const map=HEX_MAPS[NODES[BT.node].hex],w=map?map.grid[0].length:HEX_W,at=([c,r])=>r*w+c;
+ const allies=S.roster.flatMap((m,i)=>m.hp>0?[hexUnit(stats(m),m,map?at(map.allies[i]):[15,22,29][i],i,false)]:[]);
  if(!allies.length){gameOver();return}
- G=null;HX={cells:hexBoard(BT.node),allies,enemies:BT.foes.flatMap((f,i)=>f.hp>0?[hexUnit(FOES[f.t],f,[19,26,33][i],i,true)]:[]),
+ const enemies=BT.foes.flatMap((f,i)=>{if(f.hp<=0)return[];const st=map?.foes[i]||map?.foes.at(-1),u=hexUnit(FOES[f.t],f,map?at([st.c,st.r]):[19,26,33][i],i,true);u.hold=st?.hold||0;return[u]});
+ if(map)enemies.forEach((u,k)=>{while(enemies.some((o,j)=>j<k&&o.pos===u.pos))u.pos--});
+ const cells=map?hexMapBoard(map):hexBoard(BT.node);
+ G=null;HX={cells,map,w,allies,enemies,hq:map?cells.find(c=>c.land==='hq')?.id??null:null,
+  deployOK:c=>c.land!=='water'&&(map?c.r>=map.deploy:c.c<2),
   active:allies[0],phase:'deploy',turn:1,engagement:null,log:[]};
  go('hex');renderHex()}
 const hexAlive=units=>units.filter(u=>u.src.hp>0);
 const hexOccupied=()=>new Map([...hexAlive(HX.allies),...hexAlive(HX.enemies)].map(u=>[u.pos,u]));
 const hexDist=(a,b,pos=a.pos)=>hexDistance(HX.cells[pos],HX.cells[b.pos]);
-const hexBand=(a,d)=>a.arms.some(k=>{const [lo,hi]=HEX_RANGE[WEAP[k].fx];return d>=lo&&d<=hi});
-const hexInRange=(a,b,pos=a.pos)=>hexBand(a,hexDist(a,b,pos));
+const hexBand=(a,d,pos=a.pos)=>{const bonus=hexLand(pos)[3];return a.arms.some(k=>{const [lo,hi]=HEX_RANGE[WEAP[k].fx];return d>=lo&&d<=hi+bonus})};
+const hexInRange=(a,b,pos=a.pos)=>hexBand(a,hexDist(a,b,pos),pos);
 function hexLog(text){HX.log.unshift(text);HX.log.length=Math.min(3,HX.log.length)}
 function hexMoves(u){const blocked=new Set(hexOccupied().keys());
- if(HX.phase==='deploy')return new Map(HX.cells.filter(c=>c.c<2&&!blocked.has(c.id)&&c.land!=='water').map(c=>[c.id,0]));
+ if(HX.phase==='deploy')return new Map(HX.cells.filter(c=>HX.deployOK(c)&&!blocked.has(c.id)).map(c=>[c.id,0]));
  return u.moved?new Map():hexReach(HX.cells,u.pos,blocked,u.mobility)}
 function hexMove(id){const u=HX.active;if(!u||HX.phase==='enemy'||HX.engagement||!hexMoves(u).has(id))return false;
- u.pos=id;if(HX.phase!=='deploy')u.moved=true;renderHex();return true}
+ u.pos=id;if(HX.phase!=='deploy')u.moved=true;
+ if(HX.phase==='player'&&id===HX.hq){hexLog(u.name+' が敵司令部を占領!');sfx('kill');stageClear();return true}
+ renderHex();return true}
 function hexSelect(u){if(!u||u.enemy||u.src.hp<=0||HX.phase==='enemy')return;HX.active=u;renderHex()}
 function hexEngage(p,e,enemy=false){if(!p||!e||p.src.hp<=0||e.src.hp<=0||HX.engagement||HX.phase!==(enemy?'enemy':'player'))return false;
  const actor=enemy?e:p,target=enemy?p:e;if(actor.fought||!hexInRange(actor,target))return false;
  p.fought=e.fought=true;HX.engagement={p,e,enemy};
- startDuel(p.ix,e.src,hexDist(p,e)*420);return true}
+ startDuel(p.ix,e.src,Math.min(5,hexDist(p,e))*420);
+ const lp=hexLand(p.pos),le=hexLand(e.pos);G.P.cover=lp[2];G.E.cover=le[2];
+ say(`地形：自機 ${lp[0]}${lp[2]<1?'(被害−'+Math.round((1-lp[2])*100)+'%)':lp[2]>1?'(被害+'+Math.round((lp[2]-1)*100)+'%)':''}・敵 ${le[0]}${le[2]<1?'(被害−'+Math.round((1-le[2])*100)+'%)':''}`,'w');return true}
 function hexNextTurn(){HX.turn++;HX.phase='player';for(const u of [...HX.allies,...HX.enemies])u.moved=u.fought=false}
 function hexEnd(){if(HX.engagement)return;if(HX.phase==='deploy'){HX.phase='player';renderHex();return}
  if(HX.phase!=='player')return;HX.phase='enemy';const allies=hexAlive(HX.allies);
  for(const e of hexAlive(HX.enemies)){if(e.fought)continue;
+  if(e.hold&&!allies.some(p=>hexDist(e,p)<=4))continue;
   const reachable=hexReach(HX.cells,e.pos,new Set(hexOccupied().keys()),e.mobility);
-  const score=id=>Math.max(...allies.map(p=>{const d=hexDist(e,p,id);return (hexBand(e,d)?20:0)-d}));
+  const score=id=>Math.max(...allies.map(p=>{const d=hexDist(e,p,id);return (hexBand(e,d,id)?20:0)-d}))+(1-hexLand(id)[2])*6;
   const from=e.pos;e.pos=[...reachable.keys()].reduce((best,id)=>score(id)>score(best)?id:best,e.pos);
   if(from!==e.pos)hexLog(e.name+' が前進');
  }
@@ -405,19 +439,28 @@ function hexPiece(u,enemy){return `<g class="hexpiece" transform="${enemy?'rotat
  <ellipse cx="0" cy="5" rx="14" ry="9" fill="#171a16" opacity=".6"/><path d="M-12 -7h6V9h-6zM6 -7h6V9H6z" fill="#282821" stroke="#b0a487"/>
  <path d="M-12 -4h6m-6 4h6m-6 4h6M6 -4h6M6 0h6M6 4h6" stroke="#746f5b"/><path d="M-7 -8 0 -12 7 -8 6 5 0 8 -6 5Z" fill="${u.color}" stroke="#171a16"/>
  <path d="M-3 -9H3V3H-3Z" fill="#333630"/><path d="M0 -15V-4" stroke="#d1c5a4" stroke-width="2.5"/></g><circle cx="0" cy="14" r="2.8" fill="${enemy?'#ff9068':'#a6e4ac'}"/>`}
-const HEX_MARK={woods:'<path d="M-12 8 0 -13 12 8ZM2 11 10 -3 18 11Z" fill="#78927a"/>',ruins:'<path d="M-11 10V-7h8v-6h9V0h5v10Z" fill="#9a8a71"/><path d="M-7 -3v5m8 2v6m3-17v5" stroke="#4b443a" stroke-width="2"/>',water:'<path d="M-12 -3q6 -5 12 0t12 0m-24 8q6 -5 12 0t12 0" fill="none" stroke="#91b7bf" stroke-width="2"/>'};
-function renderHex(){const {active,cells,phase}=HX,occupied=hexOccupied(),deploy=phase==='deploy',reach=hexMoves(active);
+const HEX_MARK={road:'<path d="M-4 -19 4 19" stroke="#b9ad86" stroke-width="5" opacity=".55"/>',
+ cane:'<path d="M-10 9V-6m5 15V-9m5 18V-5m5 14V-8m5 17V-4" stroke="#b5bf72" stroke-width="2"/>',
+ town:'<path d="M-12 10V-2h7v-7h8V3h4v-9h6v16Z" fill="#c2b493"/><path d="M-9 1h2m5-6h2m0 5h2m6-6h1" stroke="#4b443a" stroke-width="2"/>',
+ port:'<path d="M-12 4h24l-5 6h-14Z" fill="#b39a6e"/><path d="M0 4V-12M0 -11l8 9H0" fill="#d8ccb0" stroke="#6b5b43"/>',
+ hq:'<path d="M-3 12V-14" stroke="#e8dcc0" stroke-width="2"/><path d="M-2 -14h14l-4 5 4 5H-2Z" fill="#ff7050"/><path d="M-12 12h22" stroke="#b39a6e" stroke-width="3"/>',
+ hill:'<path d="M-15 9-4 -9 3 1 7 -4 15 9Z" fill="#9a8460"/><path d="M-4 -9-1 -4" stroke="#d2c29a" stroke-width="2"/>',
+ beach:'<path d="M-10 4h3m6 -6h3m4 8h3" stroke="#e4d5a8" stroke-width="2"/>',
+ woods:'<path d="M-12 8 0 -13 12 8ZM2 11 10 -3 18 11Z" fill="#78927a"/>',ruins:'<path d="M-11 10V-7h8v-6h9V0h5v10Z" fill="#9a8a71"/><path d="M-7 -3v5m8 2v6m3-17v5" stroke="#4b443a" stroke-width="2"/>',water:'<path d="M-12 -3q6 -5 12 0t12 0m-24 8q6 -5 12 0t12 0" fill="none" stroke="#91b7bf" stroke-width="2"/>'};
+function renderHex(){const {active,cells,phase,map}=HX,occupied=hexOccupied(),deploy=phase==='deploy',reach=hexMoves(active);
  const canAttack=u=>phase==='player'&&u?.enemy&&!active.fought&&hexInRange(active,u);
  const board=cells.map(c=>{const u=occupied.get(c.id),move=reach.has(c.id),target=canAttack(u),select=u&&!u.enemy,chosen=u===active;
-  const label=`${c.c+1}列 ${c.r+1}段 ${HEX_LAND[c.land][0]}${u?' '+u.name:''}`;
+  const L=HEX_LAND[c.land],label=`${c.c+1}列 ${c.r+1}段 ${L[0]}${L[2]<1?' 被害−'+Math.round((1-L[2])*100)+'%':''}${L[3]?' 射程+'+L[3]:''}${u?' '+u.name:''}`;
   return `<g class="hexcell ${move?'move':''} ${target?'target':''} ${select?'select':''} ${chosen?'active':''}" data-cell="${c.id}" data-land="${c.land}" transform="translate(${c.x} ${c.y})" ${move||target||select?`role="button" tabindex="0" aria-label="${target?'交戦':select?'選択':deploy?'配置':'移動'}：${label}"`:''}><polygon points="${HEX_POINTS}"/><title>${label}</title>${u?hexPiece(u,u.enemy):`<g class="landmark">${HEX_MARK[c.land]||''}</g>`}</g>`}).join('');
- const enemies=hexAlive(HX.enemies),range=active.arms.map(k=>{const [lo,hi]=HEX_RANGE[WEAP[k].fx];return `${WEAP[k].n} ${lo===hi?lo:lo+'–'+hi}`}).join(' ／ ');
+ const AL=hexLand(active.pos),bonus=AL[3],enemies=hexAlive(HX.enemies),range=active.arms.map(k=>{const [lo,h0]=HEX_RANGE[WEAP[k].fx],hi=h0+bonus;return `${WEAP[k].n} ${lo===hi?lo:lo+'–'+hi}`}).join(' ／ ')+(bonus?'(丘陵で+1)':'');
+ const vbW=Math.ceil(Math.max(...cells.map(c=>c.x))+HEX_D/2+5),vbH=Math.ceil(Math.max(...cells.map(c=>c.y))+HEX_R+3);
+ const labels=(map?.labels||[]).map(([t,c,r,sea])=>`<text class="hexname${sea?' sea':''}" x="${24+c*HEX_D}" y="${24+r*33}">${t}</text>`).join('');
  const rows=hexAlive(HX.allies).map(u=>`<button class="btn ${u===active?'chosen':''}" data-hex-unit="${u.ix}" aria-pressed="${u===active}"><span>${u.name}</span><small>${u.src.hp} / ${u.max}${u.moved?'・移動済':''}${u.fought?'・交戦済':''}</small></button>`).join('');
  const targets=enemies.filter(canAttack).map(u=>`<button class="btn go" data-hex-target="${u.ix}">${u.name}と交戦 <small>${hexDist(active,u)}マス</small></button>`).join('');
  $('hex').innerHTML=`<div class="bar2"><h2>${NODES[BT.node].n} ・ 作戦盤</h2><span class="stat">${deploy?'部隊配置':`第 ${HX.turn} ターン`}</span></div><div class="hexlayout">
- <div><svg class="hexboard" viewBox="0 0 297 213" aria-label="六角マス戦場">${board}</svg><div class="hexlabels"><span class="own">● 味方</span><span class="enemy">● 敵</span><span>林・廃墟：移動力2</span><span>水域：通行不可</span></div></div>
+ <div><div class="hexscroll"><svg class="hexboard${map?' wide':''}" viewBox="0 ${map?-14:0} ${vbW} ${vbH+(map?28:0)}" aria-label="六角マス戦場">${board}${labels}</svg></div><div class="hexlabels"><span class="own">● 味方</span><span class="enemy">● 敵</span>${map?`<span>${map.tip}</span><span class="sp-only">盤は横にずらせる</span>`:'<span>林・廃墟：移動しにくく被害減</span><span>水域：通行不可</span>'}</div></div>
  <aside class="hexsidebar"><div class="row"><b>味方部隊</b><span>敵 残り ${enemies.length} 機</span></div><div class="hexunits">${rows}</div>
- <div class="row"><span>${active.name}</span><span>移動力 ${active.mobility}</span></div><p class="note hexrange">交戦射程 ${range}</p>
+ <div class="row"><span>${active.name}</span><span>移動力 ${active.mobility}</span></div><p class="note hexrange">地形 ${AL[0]}${AL[2]<1?'：被害−'+Math.round((1-AL[2])*100)+'%':AL[2]>1?'：被害+'+Math.round((AL[2]-1)*100)+'%':''}${HX.hq!=null&&!deploy?'・敵司令部まで '+hexDistance(cells[active.pos],cells[HX.hq])+'マス':''}</p><p class="note hexrange">交戦射程 ${range}</p>
  ${targets?`<div class="hexunits">${targets}</div>`:''}<div class="hexactions"><button class="btn ${deploy?'go':''}" data-hex-act="end">${deploy?'配置完了':'ターン終了'}</button><button class="btn" data-hex-act="withdraw">作戦撤退</button></div>
  <p class="note hexlog" aria-live="polite">${HX.log.join('<br>')}</p></aside></div>`}
 function hexTap(id){const u=hexOccupied().get(id);if(u){if(u.enemy)hexEngage(HX.active,u);else hexSelect(u)}else hexMove(id)}
@@ -521,7 +564,7 @@ function land(s){const t=s.to,u=s.from;if(t.hp<=0)return;
  if(s.part==='legs'){dmg*=.6;t.legs=clamp(t.legs-rnd(26,36),8,100)}
  if(s.part==='gun'){dmg*=.5;t.gun=clamp(t.gun-rnd(26,36),20,100)}
  hit(u,t,Math.round(dmg),s.part,crit,s.pl&&s.res.crit?s.res.lab:null,s.fx)}
-function hit(u,t,dmg,part,crit,lab,fx){fx=fx||'std';const fm={heavy:1.4,how:1.6,auto:.45,snipe:.7,flame:.5,rocket:1.2}[fx]||1;t.hp=Math.max(0,t.hp-dmg);if(t.aiming)t.aim*=.4;if(t===G.P&&t.aiming&&G.jolt){G.jolt={x:rnd(-1,1)*SR()*.35,y:rnd(-1,1)*SR()*.25}}
+function hit(u,t,dmg,part,crit,lab,fx){fx=fx||'std';if(t.cover)dmg=Math.max(1,Math.round(dmg*t.cover));const fm={heavy:1.4,how:1.6,auto:.45,snipe:.7,flame:.5,rocket:1.2}[fx]||1;t.hp=Math.max(0,t.hp-dmg);if(t.aiming)t.aim*=.4;if(t===G.P&&t.aiming&&G.jolt){G.jolt={x:rnd(-1,1)*SR()*.35,y:rnd(-1,1)*SR()*.25}}
  impactFx(t,fx,crit,t.x>u.x?1:-1,part);pop(t,`-${dmg}`,crit?'#ff6a4a':'#ffe39a');if(fx==='snipe'&&!crit)G.texts.push({x:t.x,y:120*t.size,t:'貫通!',l:1.1,c:'#ffffff'});
  G.freeze=(crit?.22:.08)*Math.min(1.3,fm);G.shake=Math.max(G.shake,(crit?14:8)*fm);G.flashA=Math.max(G.flashA,(crit?.45:.22)*Math.min(1.2,fm));sfx(crit?'crit':fx==='auto'?'spark':fx==='how'||fx==='heavy'?'heavy':fx==='flame'?'flame':'hit');
  if(u===G.P)G.hits++;
