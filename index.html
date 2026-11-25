@@ -88,18 +88,16 @@ header p{margin:0;font-size:14px;opacity:.75}
 .hexboard{display:block;width:100%;max-width:660px;margin:auto;background:#22291f;border:1px solid var(--edge);border-radius:6px;touch-action:manipulation}
 .hexcell polygon{fill:#424f3c;stroke:#22291f;stroke-width:1.6}
 .hexcell[data-land="woods"] polygon{fill:#314b3e}.hexcell[data-land="ruins"] polygon{fill:#534d43}.hexcell[data-land="water"] polygon{fill:#34535b}
-.hexcell.move,.hexcell.target{cursor:pointer}.hexcell.move polygon{fill:#536b4b;stroke:#c7df9c}
+.hexcell.move,.hexcell.target,.hexcell.select{cursor:pointer}.hexcell.move polygon{fill:#536b4b;stroke:#c7df9c}
+.hexcell.active polygon{stroke:#a6e4ac;stroke-width:2.5}
 .hexcell.target polygon{stroke:#ff9f77;stroke-width:2.5}.hexcell:focus-visible polygon{stroke:#fff1ba;stroke-width:3;outline:none}
 .hexcell .landmark{opacity:.68;pointer-events:none}.hexcell .hexpiece{pointer-events:none}
-.hexsidebar{display:grid;gap:8px;min-width:0}.hexstats{display:grid;gap:7px}.hexstats .bar{margin:2px 0}
+.hexsidebar{display:grid;gap:8px;min-width:0}.hexunits{display:grid;gap:5px}.hexunits .btn{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;text-align:left}.hexunits .chosen{border-color:var(--sand);background:#494e32}.hexunits small{font-size:12px}
 .hexlabels{display:flex;flex-wrap:wrap;gap:5px 10px;margin:6px 0 0;font-size:12px;color:var(--dim)}
 .hexlabels .own{color:#a6e4ac}.hexlabels .enemy{color:#ff9068}
-.hexlog{margin:0;min-height:3.4em}.hexactions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
-.hexactions .btn{padding:5px;overflow-wrap:anywhere}.hexactions .chosen{border-color:var(--sand);background:#494e32}.hexactions .wide{grid-column:1/-1}
-.hexshot{stroke:#ffe7a6;stroke-width:3;stroke-linecap:round;pointer-events:none;animation:hexflash .38s ease-out both}
-@keyframes hexflash{to{opacity:0}}
+.hexlog{margin:0;min-height:3.4em}.hexrange{margin:0}.hexactions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.hexactions .btn{padding:5px;overflow-wrap:anywhere}
 @media(max-width:760px){.hexlayout{grid-template-columns:minmax(0,1fr)}}
-@media(prefers-reduced-motion:reduce){.hexshot{animation:none;opacity:.35}}
 .mapsvg{background:#2a4f5a;border:3px solid var(--edge);border-radius:6px;width:100%;height:auto;max-height:620px;display:block}
 .ed{stroke:#cfc59a;stroke-width:.8;stroke-dasharray:2 1.6;opacity:.45}
 .ed.on{opacity:1;stroke-dasharray:none;stroke:#f0d890}
@@ -321,23 +319,21 @@ $('hangar').addEventListener('click',e=>{const a=e.target.closest('[data-a]');if
  else if(k==='frame'){const nf=$('fs'+i).value,c=BASE[nf].cost-trade(BASE[m.id].cost);if(S.funds>=c){S.funds-=c;const old=BASE[m.id].n;m.id=nf;m.up={armor:0,gun:0,sight:0,legs:0,loader:0};m.hp=stats(m).max;msg=`${old}を下取りに出して${BASE[nf].n}を受領!`}else msg=`資金が足りない(あと${c-S.funds}円)`}
  sfx('clank');save();hangar();if(msg)$('hmsg').textContent=msg});
 /* ================= 拠点戦の流れ ================= */
-let BT=null,FIGHT_STYLE='hex';
-function startStage(i,order=''){const replay=S.cleared.includes(i),flank=!replay&&approach(i).length>1;
+let BT=null;
+function startStage(i,order=''){HX=null;const replay=S.cleared.includes(i),flank=!replay&&approach(i).length>1;
  const support=Object.hasOwn(SUPPORT,order)&&S.supply>=SUPPORT[order].cost?order:'';
  const armorScale=(flank?.88:1)*(support==='barrage'?.85:1);
  BT={replay,node:i,support,flank,deployed:false,foes:NODES[i].foes.map(t=>({t,hp:Math.round(FOES[t].hp*armorScale),sq:FOES[t].sq.map(q=>({...q}))})),kills:0,ups:[],exp:0};pre()}
 function deploySupport(m,max){if(BT.deployed)return;BT.deployed=true;if(!BT.support)return;
  S.supply-=SUPPORT[BT.support].cost;if(BT.support==='repair')m.hp=Math.min(max,m.hp+Math.round(max*.3));save()}
 function pre(){go('pre');const nd=NODES[BT.node],alive=BT.foes.filter(f=>f.hp>0),nx=alive[0],F=FOES[nx.t];
- $('pre').innerHTML=`<div class="bar2"><h2>${nd.n} ・ 出撃機を選ぶ</h2><span class="funds">${S.funds} 円</span></div>
- <label class="orderpick">戦闘方式<select id="fightStyle"><option value="hex" ${FIGHT_STYLE==='hex'?'selected':''}>ヘックス戦（ターン制）</option><option value="action" ${FIGHT_STYLE==='action'?'selected':''}>狙撃戦（リアルタイム）</option></select></label>
+ $('pre').innerHTML=`<div class="bar2"><h2>${nd.n} ・ 部隊出撃</h2><span class="funds">${S.funds} 円</span></div>
  ${BT.flank||BT.support?`<p class="stat">${[BT.flank?'挟撃：守備隊装甲 −12%':'',BT.support?`${SUPPORT[BT.support].n}：${SUPPORT[BT.support].note}${BT.deployed?'（使用済み）':`（出撃時に補給 −${SUPPORT[BT.support].cost}）`}`:''].filter(Boolean).join(' ／ ')}</p>`:''}
  <div class="box"><h3>次の敵：${F.final?'大ボス ':F.boss?'BOSS ':''}${F.n}<small>装甲 ${Math.ceil(nx.hp)} / ${F.hp}</small></h3><div class="foe">${BT.foes.map(f=>`<span class="tag ${f.hp<=0?'dead':f===nx?'next':''} ${FOES[f.t].boss?'boss':''}">${FOES[f.t].final?'大ボス ':FOES[f.t].boss?'BOSS ':''}${FOES[f.t].n}${f.hp>0&&f.hp<FOES[f.t].hp?' (損傷)':''}</span>`).join('')}</div><p class="note">${F.note?F.note:F.art?'遠距離ほど正確な砲撃型。懐に飛び込め。':F.dodge>1?'すばしっこい。照準を溜めるとかわされやすい。':F.sq.length?'随伴歩兵が肉薄攻撃を仕掛けてくる。':'標準的な相手。'}</p></div>
- <div class="cards" style="margin-top:10px">${S.roster.map((m,i)=>{const s=stats(m);return `<button class="mc pick" data-i="${i}" ${m.hp<=0?'disabled':''}><h3>${s.n}<small>${s.type}・${crewTxt(m)}</small></h3><div class="row"><span>装甲</span><b>${m.hp<=0?'大破':Math.ceil(m.hp)+' / '+s.max}</b></div><div class="bar"><i style="width:${m.hp/s.max*100}%;background:${m.hp/s.max<.35?'var(--red)':'var(--hp)'}"></i></div><span class="note">左 ${WEAP[m.wL].n}・右 ${WEAP[m.wR].n}</span><span class="note">分隊：${m.sq.length?m.sq.map(q=>SQ[q.t][0]+'★'+(q.lv||1)+' '+q.men+'名').join('・'):'なし'}</span></button>`}).join('')}</div>
- <div class="row2" style="margin-top:12px"><button class="btn" data-a="retreat">撤退する(資金 -100 円)</button></div>`}
-$('pre').addEventListener('change',e=>{if(e.target.id==='fightStyle')FIGHT_STYLE=e.target.value==='action'?'action':'hex'});
-$('pre').addEventListener('click',e=>{const p=e.target.closest('.pick');if(p&&!p.disabled){sfx('ui');(FIGHT_STYLE==='hex'?startHex:startDuel)(+p.dataset.i);return}const a=e.target.closest('[data-a]');if(a&&a.dataset.a==='retreat')stageFail(true)});
-function afterDuel(){if(BT.foes.every(f=>f.hp<=0))stageClear();else if(S.roster.every(m=>m.hp<=0))gameOver();else pre()}
+ <div class="cards" style="margin-top:10px">${S.roster.map(m=>{const s=stats(m);return `<div class="mc"><h3>${s.n}<small>${s.type}・${crewTxt(m)}</small></h3><div class="row"><span>装甲</span><b>${m.hp<=0?'大破':Math.ceil(m.hp)+' / '+s.max}</b></div><div class="bar"><i style="width:${m.hp/s.max*100}%;background:${m.hp/s.max<.35?'var(--red)':'var(--hp)'}"></i></div><span class="note">左 ${WEAP[m.wL].n}・右 ${WEAP[m.wR].n}</span><span class="note">分隊：${m.sq.length?m.sq.map(q=>SQ[q.t][0]+'★'+(q.lv||1)+' '+q.men+'名').join('・'):'なし'}</span></div>`}).join('')}</div>
+ <div class="row2" style="margin-top:12px"><button class="btn go" data-a="deploy">部隊を展開</button><button class="btn" data-a="retreat">撤退する(資金 -100 円)</button></div>`}
+$('pre').addEventListener('click',e=>{const a=e.target.closest('[data-a]');if(!a)return;sfx('ui');if(a.dataset.a==='deploy')startHex();else if(a.dataset.a==='retreat')stageFail(true)});
+function afterDuel(){if(HX?.engagement){hexAfterDuel();return}if(BT.foes.every(f=>f.hp<=0))stageClear();else if(S.roster.every(m=>m.hp<=0))gameOver();else pre()}
 function gameOver(){const vets=S.roster.map(m=>({crew:m.crew,cn:m.cn,sq:m.sq.map(q=>({t:q.t,lv:q.lv,exp:q.exp,men:MEN}))})),runs=(S.runs||1)+1,reached=S.cleared.length;
  newGame();S.runs=runs;S.funds=400;S.roster.forEach((m,i)=>{m.crew=vets[i].crew;m.cn=vets[i].cn;m.sq=vets[i].sq;m.hp=stats(m).max});save();go('result');
  $('result').innerHTML=`<div class="box" style="text-align:center;padding:26px 16px"><p class="big" style="color:#ff6a4a">GAME OVER</p><p>部隊は全滅した。島の南端まで押し戻され、作戦は最初からやり直しになる。<br>でも生き残った乗員の腕と、分隊の熟練は次の作戦に引き継がれる。</p><p class="stat">制圧していた拠点 ${reached} ・ 次は第${runs}次作戦 ・ 資金 400 円から</p><ul class="lst" style="text-align:left;max-width:30em;margin:10px auto">${S.roster.map(m=>`<li>${m.cn.map((n,j)=>ROLES[j][1]+n+' Lv'+m.crew[ROLES[j][0]].lv).join('・')}${m.sq.length?' / '+m.sq.map(q=>SQ[q.t][0]+'★'+q.lv).join('・'):''}</li>`).join('')}</ul><button class="btn go" data-a="map" style="min-width:220px">第${runs}次作戦へ</button></div>`}
@@ -362,66 +358,75 @@ function hexBoard(variant){const patch=new Map(HEX_STENCIL.map(([land,c,r])=>{
 function hexDistance(a,b){const x=a.q-b.q,y=a.r-b.r;return Math.max(Math.abs(x),Math.abs(y),Math.abs(x+y))}
 function hexReach(cells,start,blocked,budget){const best=new Map([[start,0]]),open=new Set([start]);
  while(open.size){const here=[...open].reduce((a,b)=>best.get(a)<=best.get(b)?a:b);open.delete(here);
-  for(const c of cells){if(c.id===blocked||hexDistance(c,cells[here])!==1)continue;
+  for(const c of cells){if(blocked.has(c.id)||hexDistance(c,cells[here])!==1)continue;
    const cost=best.get(here)+HEX_LAND[c.land][1];if(cost<=budget&&cost<(best.get(c.id)??Infinity)){best.set(c.id,cost);open.add(c.id)}}}
  best.delete(start);return best}
-function hexUnit(def,src,pos,player){return {src,pos,hp:src.hp,max:def.max||def.hp,name:def.n,arms:{L:def.wL,R:def.wR},cd:{L:0,R:0},power:def.dmg*(player?1.5:.82),rmx:def.rmx,mobility:def.speed>=55?3:def.speed>=22?2:1,color:def.col[2]}}
-function startHex(ri){const m=S.roster[ri],s=stats(m),f=BT.foes.find(o=>o.hp>0);
- deploySupport(m,s.max);G=null;
- HX={cells:hexBoard(BT.node),p:hexUnit(s,m,15,true),e:hexUnit(FOES[f.t],f,19,false),turn:1,arm:'R',moved:false,fired:false,done:'',last:null,log:[]};
+function hexUnit(def,src,pos,ix,enemy){return {src,pos,ix,enemy,name:def.n,max:def.max||def.hp,arms:[def.wL,def.wR],
+ mobility:def.speed>=55?3:def.speed>=22?2:1,color:def.col[2],moved:false,fought:false}}
+function startHex(){const allies=S.roster.flatMap((m,i)=>m.hp>0?[hexUnit(stats(m),m,[15,22,29][i],i,false)]:[]);
+ if(!allies.length){gameOver();return}
+ G=null;HX={cells:hexBoard(BT.node),allies,enemies:BT.foes.flatMap((f,i)=>f.hp>0?[hexUnit(FOES[f.t],f,[19,26,33][i],i,true)]:[]),
+  active:allies[0],phase:'deploy',turn:1,engagement:null,log:[]};
  go('hex');renderHex()}
-const hexRange=(u,a)=>HEX_RANGE[WEAP[u.arms[a]].fx];
-function hexCanFire(u,t,a,pos=u.pos){const [lo,hi]=hexRange(u,a),d=hexDistance(HX.cells[pos],HX.cells[t.pos]);return u.cd[a]===0&&d>=lo&&d<=hi}
-function hexDamage(u,t,a){const w=WEAP[u.arms[a]],cover=HEX_LAND[HX.cells[t.pos].land][2];return Math.max(1,Math.round(w.dmg*w.shots*(w.burn?4:1)*u.power*cover))}
-function hexLog(text){HX.log.unshift(text);HX.log.length=Math.min(2,HX.log.length)}
-function hexMove(id){const {p,e,cells}=HX;if(HX.done||HX.moved||!hexReach(cells,p.pos,e.pos,p.mobility).has(id))return false;
- p.pos=id;HX.moved=true;HX.last=null;hexLog(`${p.name}：${HEX_LAND[cells[id].land][0]}へ移動`);renderHex();return true}
-function hexAttack(u,t,a){const w=WEAP[u.arms[a]],d=hexDamage(u,t,a);t.hp=Math.max(0,t.hp-d);
- u.cd[a]=Math.ceil((u.rmx?.[a]??w.rl)/3);HX.last=[u.pos,t.pos];sfx(w.fx==='how'?'how':w.fx==='heavy'?'heavy':'fire');
- hexLog(`${w.n}：${t.name}に ${d} ダメージ`);
- if(u===HX.p){gainCrew(u.src,'ldr',8);gainCrew(u.src,'gun',t.hp?20:55)}
- if(t===HX.e&&FOES[t.src.t].final&&!t.enraged&&t.hp>0&&t.hp<t.max*.5){t.enraged=true;t.power*=1.22;hexLog('テンカ暴走：攻撃力上昇')}
- if(!t.hp)hexFinish(u===HX.p?'win':'lose')}
-function hexFire(){const {p,e,arm}=HX;if(HX.done||HX.fired||!hexCanFire(p,e,arm))return false;
- HX.fired=true;hexAttack(p,e,arm);renderHex();return true}
-function hexEnemy(move){const {p,e,cells}=HX,arms=['L','R'];
- if(move){const reach=hexReach(cells,e.pos,p.pos,e.mobility),options=[e.pos,...reach.keys()];
-  const score=id=>{const d=hexDistance(cells[id],cells[p.pos]),fire=arms.some(a=>hexCanFire(e,p,a,id));
-   const gap=Math.min(...arms.map(a=>{const [lo,hi]=hexRange(e,a);return Math.max(lo-d,d-hi,0)}));
-   return (fire?20:0)-gap*4+(1-HEX_LAND[cells[id].land][2])*3-d*.15};
-  e.pos=options.reduce((best,id)=>score(id)>score(best)?id:best)}
- const a=arms.filter(a=>hexCanFire(e,p,a)).sort((a,b)=>hexDamage(e,p,b)-hexDamage(e,p,a))[0];
- if(a)hexAttack(e,p,a);else if(move)hexLog('敵は発射せず')}
-function hexEnd(){if(HX.done)return;HX.last=null;hexEnemy(true);
- if(!HX.done){for(const u of [HX.p,HX.e])for(const a of ['L','R'])u.cd[a]=Math.max(0,u.cd[a]-1);HX.turn++;HX.moved=false;HX.fired=false}renderHex()}
-function hexFinish(r){if(HX.done)return;const {p,e}=HX;HX.done=r;recordDuel(p.src,e.src,p.hp,e.hp,r)}
-function hexWithdraw(){if(HX.done)return;HX.last=null;hexEnemy(false);hexFinish('flee');renderHex()}
+const hexAlive=units=>units.filter(u=>u.src.hp>0);
+const hexOccupied=()=>new Map([...hexAlive(HX.allies),...hexAlive(HX.enemies)].map(u=>[u.pos,u]));
+const hexDist=(a,b,pos=a.pos)=>hexDistance(HX.cells[pos],HX.cells[b.pos]);
+const hexBand=(a,d)=>a.arms.some(k=>{const [lo,hi]=HEX_RANGE[WEAP[k].fx];return d>=lo&&d<=hi});
+const hexInRange=(a,b,pos=a.pos)=>hexBand(a,hexDist(a,b,pos));
+function hexLog(text){HX.log.unshift(text);HX.log.length=Math.min(3,HX.log.length)}
+function hexMoves(u){const blocked=new Set(hexOccupied().keys());
+ if(HX.phase==='deploy')return new Map(HX.cells.filter(c=>c.c<2&&!blocked.has(c.id)&&c.land!=='water').map(c=>[c.id,0]));
+ return u.moved?new Map():hexReach(HX.cells,u.pos,blocked,u.mobility)}
+function hexMove(id){const u=HX.active;if(!u||HX.phase==='enemy'||HX.engagement||!hexMoves(u).has(id))return false;
+ u.pos=id;if(HX.phase!=='deploy')u.moved=true;renderHex();return true}
+function hexSelect(u){if(!u||u.enemy||u.src.hp<=0||HX.phase==='enemy')return;HX.active=u;renderHex()}
+function hexEngage(p,e,enemy=false){if(!p||!e||p.src.hp<=0||e.src.hp<=0||HX.engagement||HX.phase!==(enemy?'enemy':'player'))return false;
+ const actor=enemy?e:p,target=enemy?p:e;if(actor.fought||!hexInRange(actor,target))return false;
+ p.fought=e.fought=true;HX.engagement={p,e,enemy};
+ startDuel(p.ix,e.src,hexDist(p,e)*420);return true}
+function hexNextTurn(){HX.turn++;HX.phase='player';for(const u of [...HX.allies,...HX.enemies])u.moved=u.fought=false}
+function hexEnd(){if(HX.engagement)return;if(HX.phase==='deploy'){HX.phase='player';renderHex();return}
+ if(HX.phase!=='player')return;HX.phase='enemy';const allies=hexAlive(HX.allies);
+ for(const e of hexAlive(HX.enemies)){if(e.fought)continue;
+  const reachable=hexReach(HX.cells,e.pos,new Set(hexOccupied().keys()),e.mobility);
+  const score=id=>Math.max(...allies.map(p=>{const d=hexDist(e,p,id);return (hexBand(e,d)?20:0)-d}));
+  const from=e.pos;e.pos=[...reachable.keys()].reduce((best,id)=>score(id)>score(best)?id:best,e.pos);
+  if(from!==e.pos)hexLog(e.name+' が前進');
+ }
+ for(const e of hexAlive(HX.enemies)){const p=allies.find(u=>hexInRange(e,u));if(p&&hexEngage(p,e,true))return}
+ hexNextTurn();renderHex()}
+function hexAfterDuel(){if(G.run)return;const {p,e,enemy}=HX.engagement;
+ const note={win:e.name+' 撃破',lose:p.name+' 大破',flee:p.name+' 離脱',time:'時間切れ'}[G.result];
+ if(note)hexLog(note);HX.engagement=null;G=null;
+ if(!hexAlive(HX.enemies).length){stageClear();return}if(!hexAlive(HX.allies).length){gameOver();return}
+ if(HX.active.src.hp<=0)HX.active=hexAlive(HX.allies)[0];
+ if(enemy)hexNextTurn();go('hex');renderHex()}
 function hexPiece(u,enemy){return `<g class="hexpiece" transform="${enemy?'rotate(180)':''}">
  <ellipse cx="0" cy="5" rx="14" ry="9" fill="#171a16" opacity=".6"/><path d="M-12 -7h6V9h-6zM6 -7h6V9H6z" fill="#282821" stroke="#b0a487"/>
  <path d="M-12 -4h6m-6 4h6m-6 4h6M6 -4h6M6 0h6M6 4h6" stroke="#746f5b"/><path d="M-7 -8 0 -12 7 -8 6 5 0 8 -6 5Z" fill="${u.color}" stroke="#171a16"/>
  <path d="M-3 -9H3V3H-3Z" fill="#333630"/><path d="M0 -15V-4" stroke="#d1c5a4" stroke-width="2.5"/></g><circle cx="0" cy="14" r="2.8" fill="${enemy?'#ff9068':'#a6e4ac'}"/>`}
 const HEX_MARK={woods:'<path d="M-12 8 0 -13 12 8ZM2 11 10 -3 18 11Z" fill="#78927a"/>',ruins:'<path d="M-11 10V-7h8v-6h9V0h5v10Z" fill="#9a8a71"/><path d="M-7 -3v5m8 2v6m3-17v5" stroke="#4b443a" stroke-width="2"/>',water:'<path d="M-12 -3q6 -5 12 0t12 0m-24 8q6 -5 12 0t12 0" fill="none" stroke="#91b7bf" stroke-width="2"/>'};
-function renderHex(){const {p,e,cells,arm,done,last}=HX,shoot=!done&&!HX.fired&&hexCanFire(p,e,arm);
- const reach=done||HX.moved?new Map():hexReach(cells,p.pos,e.pos,p.mobility);
- const board=cells.map(c=>{const own=c.id===p.pos,enemy=c.id===e.pos,move=reach.has(c.id),target=enemy&&shoot;
-  const label=`${c.c+1}列 ${c.r+1}段 ${HEX_LAND[c.land][0]}${own?' 自機':enemy?' 敵機':''}`;
-  return `<g class="hexcell ${move?'move':target?'target':''}" data-cell="${c.id}" data-land="${c.land}" transform="translate(${c.x} ${c.y})" ${move||target?`role="button" tabindex="0" aria-label="${target?'攻撃':'移動'}：${label}"`:''}><polygon points="${HEX_POINTS}"/><title>${label}</title>${own||enemy?hexPiece(own?p:e,enemy):`<g class="landmark">${HEX_MARK[c.land]||''}</g>`}</g>`}).join('');
- const stats=(u,label,hue)=>`<div><div class="row"><b>${label} ${u.name}</b><span>${u.hp} / ${u.max}</span></div><div class="bar"><i style="width:${u.hp/u.max*100}%;background:${hue}"></i></div></div>`;
- const status=done?{win:'勝利',lose:'自機大破',flee:'離脱成功'}[done]:`第 ${HX.turn} ターン`;
- const trail=last?`<line class="hexshot" x1="${cells[last[0]].x}" y1="${cells[last[0]].y}" x2="${cells[last[1]].x}" y2="${cells[last[1]].y}"/>`:'';
- const arms=['L','R'].map(a=>{const [lo,hi]=hexRange(p,a);return `<button class="btn ${a===arm?'chosen':''}" data-hex-arm="${a}" aria-pressed="${a===arm}">${a==='L'?'左':'右'} ${WEAP[p.arms[a]].n}<small class="note" style="display:block">射程 ${lo===hi?lo:lo+'–'+hi}${p.cd[a]?' ／ 装填 '+p.cd[a]:''}</small></button>`}).join('');
- $('hex').innerHTML=`<div class="bar2"><h2>${NODES[BT.node].n} ・ ヘックス戦</h2><span class="stat">${status}</span></div><div class="hexlayout">
- <div><svg class="hexboard" viewBox="0 0 297 213" aria-label="六角マス戦場">${board}${trail}</svg><div class="hexlabels"><span class="own">● 自機</span><span class="enemy">● 敵機</span><span>林・廃墟：被ダメージ −30%</span><span>水域：通行不可</span></div></div>
- <aside class="hexsidebar"><div class="hexstats">${stats(p,'自機','#a6e4ac')}${stats(e,'敵機','#ff9068')}</div>
- <div class="row"><span>距離 ${hexDistance(cells[p.pos],cells[e.pos])} マス</span><span>${HX.moved?'移動済':'移動 '+p.mobility} ／ ${HX.fired?'攻撃済':'攻撃 1'}</span></div>
- <div class="hexactions">${done?'<button class="btn go wide" data-hex-act="next">次へ</button>':`${arms}<button class="btn go wide" data-hex-act="fire" ${shoot?'':'disabled'}>攻撃${shoot?' ・ '+hexDamage(p,e,arm):''}</button><button class="btn" data-hex-act="end">ターン終了</button><button class="btn" data-hex-act="withdraw">戦闘離脱</button>`}</div>
+function renderHex(){const {active,cells,phase}=HX,occupied=hexOccupied(),deploy=phase==='deploy',reach=hexMoves(active);
+ const canAttack=u=>phase==='player'&&u?.enemy&&!active.fought&&hexInRange(active,u);
+ const board=cells.map(c=>{const u=occupied.get(c.id),move=reach.has(c.id),target=canAttack(u),select=u&&!u.enemy,chosen=u===active;
+  const label=`${c.c+1}列 ${c.r+1}段 ${HEX_LAND[c.land][0]}${u?' '+u.name:''}`;
+  return `<g class="hexcell ${move?'move':''} ${target?'target':''} ${select?'select':''} ${chosen?'active':''}" data-cell="${c.id}" data-land="${c.land}" transform="translate(${c.x} ${c.y})" ${move||target||select?`role="button" tabindex="0" aria-label="${target?'交戦':select?'選択':deploy?'配置':'移動'}：${label}"`:''}><polygon points="${HEX_POINTS}"/><title>${label}</title>${u?hexPiece(u,u.enemy):`<g class="landmark">${HEX_MARK[c.land]||''}</g>`}</g>`}).join('');
+ const enemies=hexAlive(HX.enemies),range=active.arms.map(k=>{const [lo,hi]=HEX_RANGE[WEAP[k].fx];return `${WEAP[k].n} ${lo===hi?lo:lo+'–'+hi}`}).join(' ／ ');
+ const rows=hexAlive(HX.allies).map(u=>`<button class="btn ${u===active?'chosen':''}" data-hex-unit="${u.ix}" aria-pressed="${u===active}"><span>${u.name}</span><small>${u.src.hp} / ${u.max}${u.moved?'・移動済':''}${u.fought?'・交戦済':''}</small></button>`).join('');
+ const targets=enemies.filter(canAttack).map(u=>`<button class="btn go" data-hex-target="${u.ix}">${u.name}と交戦 <small>${hexDist(active,u)}マス</small></button>`).join('');
+ $('hex').innerHTML=`<div class="bar2"><h2>${NODES[BT.node].n} ・ 作戦盤</h2><span class="stat">${deploy?'部隊配置':`第 ${HX.turn} ターン`}</span></div><div class="hexlayout">
+ <div><svg class="hexboard" viewBox="0 0 297 213" aria-label="六角マス戦場">${board}</svg><div class="hexlabels"><span class="own">● 味方</span><span class="enemy">● 敵</span><span>林・廃墟：移動力2</span><span>水域：通行不可</span></div></div>
+ <aside class="hexsidebar"><div class="row"><b>味方部隊</b><span>敵 残り ${enemies.length} 機</span></div><div class="hexunits">${rows}</div>
+ <div class="row"><span>${active.name}</span><span>移動力 ${active.mobility}</span></div><p class="note hexrange">交戦射程 ${range}</p>
+ ${targets?`<div class="hexunits">${targets}</div>`:''}<div class="hexactions"><button class="btn ${deploy?'go':''}" data-hex-act="end">${deploy?'配置完了':'ターン終了'}</button><button class="btn" data-hex-act="withdraw">作戦撤退</button></div>
  <p class="note hexlog" aria-live="polite">${HX.log.join('<br>')}</p></aside></div>`}
-function hexTap(id){if(HX.done)return;if(id===HX.e.pos)hexFire();else hexMove(id)}
-function hexFocus(){const root=$('hex');(root.querySelector('[data-hex-act=next], [data-hex-act=fire]:not(:disabled)')||root.querySelector('[data-hex-act=end]'))?.focus()}
-$('hex').addEventListener('click',ev=>{if(mode!=='hex')return;const a=ev.target.closest('[data-hex-arm]'),op=ev.target.closest('[data-hex-act]'),cell=ev.target.closest('[data-cell]');
- if(a&&!HX.done){HX.arm=a.dataset.hexArm;renderHex();$('hex').querySelector(`[data-hex-arm=${HX.arm}]`).focus()}
- else if(op){({fire:hexFire,end:hexEnd,withdraw:hexWithdraw,next:afterDuel})[op.dataset.hexAct]();if(mode==='hex'&&ev.detail===0)hexFocus()}else if(cell)hexTap(Number(cell.dataset.cell))});
-$('hex').addEventListener('keydown',ev=>{const cell=ev.target.closest('[data-cell][tabindex]');if(cell&&(ev.key==='Enter'||ev.key===' ')){ev.preventDefault();hexTap(Number(cell.dataset.cell));hexFocus()}});
+function hexTap(id){const u=hexOccupied().get(id);if(u){if(u.enemy)hexEngage(HX.active,u);else hexSelect(u)}else hexMove(id)}
+function hexFocus(){const root=$('hex');(root.querySelector('[data-hex-target]')||root.querySelector('[data-hex-act=end]'))?.focus()}
+$('hex').addEventListener('click',ev=>{if(mode!=='hex')return;const unit=ev.target.closest('[data-hex-unit]'),target=ev.target.closest('[data-hex-target]'),op=ev.target.closest('[data-hex-act]'),cell=ev.target.closest('[data-cell]');
+ if(unit){hexSelect(HX.allies.find(u=>u.ix===Number(unit.dataset.hexUnit)));$('hex').querySelector(`[data-hex-unit=${HX.active.ix}]`)?.focus()}
+ else if(target)hexEngage(HX.active,HX.enemies.find(u=>u.ix===Number(target.dataset.hexTarget)));
+ else if(op){if(op.dataset.hexAct==='end')hexEnd();else stageFail(true);if(mode==='hex'&&ev.detail===0)hexFocus()}else if(cell)hexTap(Number(cell.dataset.cell))});
+$('hex').addEventListener('keydown',ev=>{const cell=ev.target.closest('[data-cell][tabindex]');if(cell&&(ev.key==='Enter'||ev.key===' ')){ev.preventDefault();hexTap(Number(cell.dataset.cell));if(mode==='hex')hexFocus()}});
 /* ================= 戦闘 ================= */
 const cv=$('cv'),ctx=cv.getContext('2d');
 let W=800,H=340,S0=1,GY=290,LIMIT=120;
@@ -431,10 +436,11 @@ function fit(){const r=cv.getBoundingClientRect();if(!r.width)return;const d=Mat
 const cvRO=new ResizeObserver(fit);cvRO.observe(cv);
 let G=null,CAM={x:500,z:.8},logDirty=true;
 function mkUnit(src,side,def,persist){const u={side,x:side<0?200:2300,hp:persist.hp,max:def.max||def.hp,legs:100,gun:100,dmg:def.dmg,aimSpd:def.aimSpd,capB:def.capB||0,rmax:def.reload,reload:1.2,speed:def.speed,col:def.col,size:def.size,bl:WEAP[def.wR].len,wL:def.wL,wR:def.wR,hull:def.hull,arm:'R',fl:{L:0,R:0},flee:false,evMode:false,jinkT:0,man:false,burn:0,rmx:def.rmx,rl:side<0?{L:1.6,R:1.2}:null,name:def.n,art:!!def.art,final:!!def.final,boss:!!def.boss,pref:def.pref||0,dodge:def.dodge||0,dodgeT:0,swayMul:def.swayMul||1,evade:def.evade||0,lat:0,latDir:Math.random()<.5?1:-1,aiming:false,aim:0,aimT:0,thr:60,part:'body',dir:0,phase:Math.random()*6,recoil:0,flash:0,smoke:0,busy:0,busyKind:'',repairAmt:0,deadT:0,src,squads:persist.sq.map(q=>Object.assign(q,{cd:0,busy:0,used:0}))};return u}
-function startDuel(ri){const m=S.roster[ri],s=stats(m),f=BT.foes.find(x=>x.hp>0),F=FOES[f.t];deploySupport(m,s.max);
+function startDuel(ri,f=BT.foes.find(x=>x.hp>0),initialDistance=null){const m=S.roster[ri],s=stats(m),F=FOES[f.t];deploySupport(m,s.max);
  G={t:0,run:true,over:false,paused:false,mg:0,prop:NODES[BT.node].prop,freeze:0,slow:0,shake:0,flashA:0,banner:null,sky:NODES[BT.node].sky,ri,fo:f,ups:[],shots:[],parts:[],texts:[],decals:[],log:[],hits:0,
   P:mkUnit(m,-1,s,m),E:mkUnit(f,1,F,f)};
- CAM={x:1250,z:W/2750};go('battle');buildSq();if(F.boss){banner(F.final?'大ボス出現':'BOSS',F.n,F.final?'#ff6a4a':'#ffcf4a');G.shake=10;sfx('heavy')}say(`${s.n} 出撃! 相手は${F.n}。`,'w');logDirty=true}
+ if(initialDistance!=null)G.E.x=G.P.x+initialDistance;
+ CAM={x:(G.P.x+G.E.x)/2,z:W/2750};go('battle');buildSq();if(F.boss){banner(F.final?'大ボス出現':'BOSS',F.n,F.final?'#ff6a4a':'#ffcf4a');G.shake=10;sfx('heavy')}say(HX?.engagement?.enemy?`${F.n} が ${s.n} に攻撃を仕掛けた!`:`${s.n} 出撃! 相手は${F.n}。`,'w');logDirty=true}
 function demo(){const m={id:'kaji',hp:900,wL:'auto',wR:'cannon',sq:[{t:'assault',men:6}],up:{armor:0,gun:0,sight:0,legs:0,loader:0}};
  G={t:0,run:false,over:false,demo:true,prop:'town',paused:false,freeze:0,slow:0,shake:0,flashA:0,banner:null,sky:2,shots:[],parts:[],texts:[],decals:[],log:[],P:mkUnit(m,-1,stats(m),{hp:900,sq:[{t:'assault',men:6}]}),E:mkUnit(null,1,FOES.heavy,{hp:950,sq:[{t:'assault',men:6}]})};
  G.P.x=380;G.E.x=640;CAM={x:510,z:W/700}}
@@ -565,9 +571,9 @@ function step(dt){G.t+=dt;ai(dt);scopeStep(dt);
  check()}
 function recordDuel(m,f,ownHP,enemyHP,r){m.hp=Math.round(ownHP);f.hp=Math.round(enemyHP);if(r!=='lose')gainCrew(m,'drv',r==='flee'?18:10);if(r==='win')BT.kills++;save()}
 function check(){if(!G.run)return;const P=G.P,E=G.E;let r=null;if(E.hp<=0)r='win';else if(P.hp<=0)r='lose';else if(G.escaped)r='flee';else if(G.t>=LIMIT)r='time';if(!r)return;
- G.run=false;G.over=true;P.dir=0;if(!G.wreck&&(r==='win'||r==='lose'))wreckFx(r==='win'?E:P);recordDuel(P.src,G.fo,P.hp,E.hp,r);const ups=G.ups;
+ G.run=false;G.over=true;G.result=r;P.dir=0;if(!G.wreck&&(r==='win'||r==='lose'))wreckFx(r==='win'?E:P);recordDuel(P.src,G.fo,P.hp,E.hp,r);const ups=G.ups;
  const M={win:['勝利!',`${E.name}を撃破。`],lose:[`${P.name} 大破`,'機体は回収された。格納庫で修理するまで出撃できない。'],time:['時間切れ','決着つかず。損傷はそのまま持ち越し。'],flee:['離脱成功','背中に弾を浴びながらも戦場を抜けた。損傷はそのまま持ち越し。']}[r];
- setTimeout(()=>{const o=$('bOver');o.hidden=false;o.innerHTML=`<div><h2>${M[0]}</h2><p>${M[1]}</p>${ups.length?`<p class="stat">${ups.join('<br>')}</p>`:''}<button class="btn go" data-a="next" style="min-width:200px">次へ</button></div>`},r==='time'?300:1500)}
+ setTimeout(()=>{const o=$('bOver');o.hidden=false;o.innerHTML=`<div><h2>${M[0]}</h2><p>${M[1]}</p>${ups.length?`<p class="stat">${ups.join('<br>')}</p>`:''}<button class="btn go" data-a="next" style="min-width:200px">${HX?.engagement?'作戦盤へ':'次へ'}</button></div>`},r==='time'?300:1500)}
 $('bOver').addEventListener('click',e=>{const a=e.target.closest('[data-a]');if(!a)return;sfx('ui');if(a.dataset.a==='next')afterDuel();else if(a.dataset.a==='resume')pause()});
 function pause(){if(!G||!G.run)return;G.paused=!G.paused;G.P.dir=0;$('pause').textContent=G.paused?'再開':'停止';const o=$('bOver');if(G.paused){o.hidden=false;o.innerHTML=`<div><h2>停止中</h2><button class="btn go" data-a="resume" style="min-width:200px">再開</button></div>`}else o.hidden=true}
 /* ================= 描画 ================= */
